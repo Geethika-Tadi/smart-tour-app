@@ -1,0 +1,3073 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Tour Management</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Nunito', sans-serif; background: #0f1923; min-height: 100vh; }
+        .page { display: none; min-height: 100vh; }
+
+        /* BACKEND STATUS BADGE */
+        .server-status-badge {
+            position: fixed; top: 18px; left: 20px; z-index: 9999;
+            display: flex; align-items: center; gap: 8px;
+            background: rgba(15, 25, 35, 0.85); backdrop-filter: blur(8px);
+            border: 1px solid rgba(86, 194, 245, 0.25);
+            border-radius: 20px; padding: 6px 14px;
+            font-size: 12px; color: #a8d8ea; font-weight: 700;
+        }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #00c4a7; box-shadow: 0 0 8px #00c4a7; }
+        .status-dot.offline { background: #f4a261; box-shadow: 0 0 8px #f4a261; }
+
+        /* LOGIN */
+        #loginPage {
+            background: linear-gradient(135deg, rgba(15,25,35,0.85), rgba(10,40,60,0.9)),
+                        url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1600&q=80') center/cover no-repeat;
+            align-items: center; justify-content: center; flex-direction: column;
+        }
+        .login-logo { font-family: 'Playfair Display', serif; font-size: 42px; color: #fff; letter-spacing: 2px; margin-bottom: 8px; text-shadow: 0 2px 20px rgba(0,0,0,0.5); }
+        .login-tagline { color: #a8d8ea; font-size: 15px; margin-bottom: 36px; letter-spacing: 3px; text-transform: uppercase; }
+        .login-card { background: rgba(255,255,255,0.07); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 44px 40px; width: 360px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+        .login-card input { width: 100%; padding: 13px 18px; margin-bottom: 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: #fff; font-size: 15px; font-family: 'Nunito', sans-serif; outline: none; transition: border 0.3s; }
+        .login-card input::placeholder { color: rgba(255,255,255,0.5); }
+        .login-card input:focus { border-color: #56c2f5; }
+        .btn-primary { width: 100%; padding: 14px; background: linear-gradient(135deg, #0097d6, #00c4a7); color: white; border: none; border-radius: 10px; font-size: 16px; font-weight: 700; font-family: 'Nunito', sans-serif; cursor: pointer; letter-spacing: 1px; transition: transform 0.2s, box-shadow 0.2s; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,151,214,0.5); }
+        .error { color: #ff6b6b; font-size: 13px; margin-top: 10px; text-align: center; }
+
+        /* DASHBOARD */
+        #dashboardPage { background: #0f1923; }
+        .dash-hero { position: relative; height: 320px; background: url('https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1600&q=80') center/cover no-repeat; display: flex; align-items: flex-end; padding: 32px 40px; }
+        .dash-hero::before { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(15,25,35,1) 0%, rgba(15,25,35,0.4) 60%, transparent 100%); }
+        .dash-hero-content { position: relative; z-index: 1; }
+        .dash-hero-content h2 { font-family: 'Playfair Display', serif; font-size: 36px; color: #fff; margin-bottom: 6px; }
+        .dash-hero-content p { color: #a8d8ea; font-size: 15px; }
+        .dash-body { padding: 32px 40px; }
+        .dash-destinations { display: flex; gap: 20px; margin-bottom: 36px; overflow-x: auto; padding-bottom: 8px; }
+        .dest-card { flex: 0 0 200px; border-radius: 16px; overflow: hidden; position: relative; height: 140px; cursor: pointer; transition: transform 0.3s, box-shadow 0.3s; }
+        .dest-card:hover { transform: scale(1.06); box-shadow: 0 12px 30px rgba(0,151,214,0.4); }
+        .dest-card img { width: 100%; height: 100%; object-fit: cover; }
+        .dest-card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 60%); }
+        .dest-label { position: absolute; bottom: 12px; left: 14px; color: #fff; font-weight: 700; font-size: 15px; z-index: 1; }
+        .section-title { font-family: 'Playfair Display', serif; color: #fff; font-size: 22px; margin-bottom: 16px; }
+        .dash-cta-section { background: linear-gradient(135deg, rgba(0,151,214,0.15), rgba(0,196,167,0.15)); border: 1px solid rgba(86,194,245,0.2); border-radius: 20px; padding: 32px; display: flex; align-items: center; justify-content: space-between; }
+        .dash-cta-section h3 { font-family: 'Playfair Display', serif; font-size: 26px; color: #fff; margin-bottom: 8px; }
+        .dash-cta-section p { color: #a8c8d8; font-size: 14px; max-width: 400px; }
+        .btn-cta { padding: 14px 32px; background: linear-gradient(135deg, #0097d6, #00c4a7); color: white; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; font-family: 'Nunito', sans-serif; cursor: pointer; white-space: nowrap; transition: transform 0.2s, box-shadow 0.2s; }
+        .btn-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,151,214,0.4); }
+
+        /* DESTINATION DETAIL PAGE */
+        #destDetailPage { background: #0f1923; }
+        .dest-detail-hero { position: relative; height: 280px; background-size: cover; background-position: center; display: flex; align-items: flex-end; padding: 28px 36px; }
+        .dest-detail-hero::before { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(15,25,35,1) 0%, rgba(15,25,35,0.3) 60%, transparent 100%); }
+        .dest-detail-hero-content { position: relative; z-index: 1; }
+        .dest-detail-hero-content h2 { font-family: 'Playfair Display', serif; font-size: 38px; color: #fff; margin-bottom: 4px; }
+        .dest-detail-hero-content p { color: #a8d8ea; font-size: 14px; }
+        .dest-detail-body { padding: 28px 36px; max-width: 900px; margin: 0 auto; }
+
+        .budget-selector { display: flex; gap: 12px; margin-bottom: 32px; flex-wrap: wrap; }
+        .budget-btn { padding: 10px 22px; border-radius: 30px; border: 2px solid rgba(86,194,245,0.3); background: rgba(255,255,255,0.05); color: #a8d8ea; font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+        .budget-btn:hover, .budget-btn.active { background: linear-gradient(135deg, #0097d6, #00c4a7); border-color: transparent; color: #fff; transform: translateY(-2px); }
+
+        .person-selector { display: flex; align-items: center; gap: 16px; margin-bottom: 32px; }
+        .person-selector label { color: #a8c8d8; font-size: 13px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
+        .person-controls { display: flex; align-items: center; gap: 12px; background: rgba(255,255,255,0.06); border: 1px solid rgba(86,194,245,0.25); border-radius: 30px; padding: 6px 16px; }
+        .person-btn { background: linear-gradient(135deg, #0097d6, #00c4a7); border: none; color: #fff; font-size: 18px; font-weight: 700; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.2s; line-height: 1; }
+        .person-btn:hover { transform: scale(1.15); }
+        .person-count { color: #fff; font-size: 20px; font-weight: 700; min-width: 28px; text-align: center; }
+        .person-label-sub { color: #7ab8d4; font-size: 12px; }
+        .total-cost-bar { background: linear-gradient(135deg, rgba(0,151,214,0.15), rgba(0,196,167,0.15)); border: 1px solid rgba(86,194,245,0.3); border-radius: 14px; padding: 16px 20px; margin-bottom: 28px; display: flex; justify-content: space-between; align-items: center; }
+        .total-cost-bar .tc-label { color: #a8d8ea; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+        .total-cost-bar .tc-value { color: #00c4a7; font-size: 22px; font-weight: 700; font-family: 'Playfair Display', serif; }
+        .total-cost-bar .tc-note { color: #7ab8d4; font-size: 11px; margin-top: 2px; }
+        .detail-section { margin-bottom: 28px; }
+
+        /* CUSTOM BUDGET INPUT */
+        .custom-budget-row { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; flex-wrap: wrap; }
+        .custom-budget-row label { color: #a8c8d8; font-size: 13px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
+        .custom-budget-input { background: rgba(255,255,255,0.08); border: 2px solid rgba(86,194,245,0.3); border-radius: 12px; padding: 10px 16px; color: #fff; font-size: 15px; font-family: 'Nunito', sans-serif; outline: none; width: 180px; transition: border 0.3s; }
+        .custom-budget-input:focus { border-color: #56c2f5; background: rgba(255,255,255,0.12); }
+        .custom-budget-input::placeholder { color: rgba(255,255,255,0.35); }
+        .btn-compare { padding: 10px 22px; background: linear-gradient(135deg, #0097d6, #00c4a7); border: none; border-radius: 10px; color: #fff; font-size: 14px; font-weight: 700; font-family: 'Nunito', sans-serif; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+        .btn-compare:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,151,214,0.4); }
+
+        /* COMPARISON TABLE */
+        .compare-section { margin-bottom: 32px; }
+        .compare-section-title { font-family: 'Playfair Display', serif; color: #fff; font-size: 20px; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+        .compare-table { width: 100%; border-collapse: collapse; }
+        .compare-table th { background: rgba(0,151,214,0.2); color: #a8d8ea; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 12px 16px; text-align: left; border-bottom: 2px solid rgba(86,194,245,0.2); }
+        .compare-table td { padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.07); color: #fff; font-size: 14px; vertical-align: middle; }
+        .compare-table tr:last-child td { border-bottom: none; }
+        .compare-table tr:hover td { background: rgba(255,255,255,0.03); }
+        .platform-logo { display: flex; align-items: center; gap: 10px; }
+        .platform-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .platform-name { font-weight: 700; font-size: 14px; }
+        .price-cell { font-weight: 700; font-size: 16px; }
+        .our-row td { background: rgba(0,196,167,0.08) !important; }
+        .our-row .price-cell { color: #00c4a7; font-size: 18px; }
+        .badge-best { background: linear-gradient(135deg, #00c4a7, #0097d6); color: #fff; font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px; margin-left: 8px; letter-spacing: 0.5px; }
+        .badge-high { background: rgba(255,107,107,0.2); color: #ff6b6b; font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px; margin-left: 8px; }
+        .savings-bar { background: rgba(0,196,167,0.1); border: 1px solid rgba(0,196,167,0.3); border-radius: 12px; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; margin-top: 14px; }
+        .savings-text { color: #00c4a7; font-weight: 700; font-size: 15px; }
+        .savings-sub { color: #7ab8d4; font-size: 12px; margin-top: 2px; }
+        .detail-section-title { font-family: 'Playfair Display', serif; color: #fff; font-size: 20px; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+        .detail-section-title span { font-size: 22px; }
+
+        .cards-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+        .info-card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 18px; transition: border-color 0.2s, transform 0.2s; }
+        .info-card:hover { border-color: rgba(86,194,245,0.4); transform: translateY(-3px); }
+        .info-card .card-name { color: #fff; font-weight: 700; font-size: 15px; margin-bottom: 6px; }
+        .info-card .card-detail { color: #7ab8d4; font-size: 13px; margin-bottom: 4px; }
+        .info-card .card-price { color: #00c4a7; font-weight: 700; font-size: 14px; margin-top: 8px; }
+        .info-card .card-badge { display: inline-block; background: rgba(0,196,167,0.15); border: 1px solid rgba(0,196,167,0.3); border-radius: 20px; padding: 3px 10px; font-size: 11px; color: #00c4a7; font-weight: 700; margin-top: 6px; }
+
+        .transport-card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 18px; display: flex; align-items: center; gap: 16px; transition: border-color 0.2s, transform 0.2s; }
+        .transport-card:hover { border-color: rgba(86,194,245,0.4); transform: translateY(-3px); }
+        .transport-icon { font-size: 32px; }
+        .transport-info .t-name { color: #fff; font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+        .transport-info .t-detail { color: #7ab8d4; font-size: 13px; }
+        .transport-info .t-price { color: #00c4a7; font-weight: 700; font-size: 14px; margin-top: 6px; }
+
+        .btn-back-dash { padding: 12px 28px; background: transparent; border: 2px solid rgba(86,194,245,0.4); color: #56c2f5; border-radius: 12px; font-size: 14px; font-weight: 700; font-family: 'Nunito', sans-serif; cursor: pointer; transition: all 0.2s; margin-bottom: 28px; }
+        .btn-back-dash:hover { background: rgba(0,151,214,0.15); transform: translateY(-2px); }
+
+        .no-data { color: #7ab8d4; font-size: 14px; padding: 16px; background: rgba(255,255,255,0.04); border-radius: 12px; text-align: center; }
+
+        /* PLAN PAGE */
+        #planPage { background: linear-gradient(170deg, rgba(15,25,35,0.95), rgba(10,40,60,0.97)), url('https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1600&q=80') center/cover no-repeat fixed; align-items: center; justify-content: center; padding: 40px 20px; }
+        .plan-card { background: rgba(139,137,137,0.06); backdrop-filter: blur(16px); border: 1px solid rgba(212,196,200,0.792); border-radius: 24px; padding: 44px 40px; width: 420px; box-shadow: 0 24px 60px rgba(15,15,15,0.724); }
+        .plan-card h2 { font-family: 'Playfair Display', serif; color: #fff; font-size: 30px; margin-bottom: 6px; }
+        .plan-card .subtitle { color: #7ab8d4; font-size: 13px; margin-bottom: 30px; letter-spacing: 2px; text-transform: uppercase; }
+        .field-label { color: #a8c8d8; font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px; }
+        .plan-card input { width: 100%; padding: 13px 16px; margin-bottom: 20px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.08); color: #fff; font-size: 15px; font-family: 'Nunito', sans-serif; outline: none; transition: border 0.3s; }
+        .plan-card input::placeholder { color: rgba(255,255,255,0.35); }
+        .plan-card input:focus { border-color: #56c2f5; background: rgba(255,255,255,0.12); }
+
+        /* PROCESSING */
+        #processingPage { background: #0f1923; flex-direction: column; align-items: center; justify-content: center; }
+        .proc-img { width: 280px; height: 180px; border-radius: 20px; object-fit: cover; margin-bottom: 30px; opacity: 0.7; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+        #processingPage h2 { font-family: 'Playfair Display', serif; color: #fff; font-size: 28px; margin-bottom: 8px; }
+        #processingPage p { color: #7ab8d4; margin-bottom: 28px; font-size: 14px; }
+        .loader { border: 4px solid rgba(255,255,255,0.1); border-top: 4px solid #0097d6; border-radius: 50%; width: 50px; height: 50px; animation: spin 0.9s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        /* RESULT */
+        #resultPage { background: linear-gradient(135deg, rgba(10,25,40,0.85), rgba(5,30,55,0.90)), url('https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1600&q=80') center/cover no-repeat fixed; padding: 40px 20px; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
+        .result-banner { width: 100%; max-width: 560px; border-radius: 20px; overflow: hidden; position: relative; margin-bottom: 24px; box-shadow: 0 16px 50px rgba(0,0,0,0.5); }
+        .result-banner img { width: 100%; height: 200px; object-fit: cover; display: block; }
+        .result-banner-overlay { position: absolute; inset: 0; background: linear-gradient(135deg, rgba(0,151,214,0.55), rgba(0,196,167,0.55)); display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 26px; color: #fff; text-shadow: 0 2px 12px rgba(0,0,0,0.5); }
+        .result-card { background: rgba(255,255,255,0.07); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 32px; width: 100%; max-width: 560px; margin-bottom: 20px; box-shadow: 0 16px 50px rgba(0,0,0,0.4); }
+        .result-card h2 { font-family: 'Playfair Display', serif; color: #fff; font-size: 26px; margin-bottom: 20px; }
+        .result-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .result-row:last-of-type { border-bottom: none; }
+        .result-row .label { color: #7ab8d4; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
+        .result-row .value { color: #fff; font-weight: 700; font-size: 16px; }
+        .features-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-top: 20px; }
+        .feature-item { background: linear-gradient(135deg, rgba(0,151,214,0.15), rgba(0,196,167,0.15)); border: 1px solid rgba(86,194,245,0.25); border-radius: 12px; padding: 16px 12px; text-align: center; }
+        .feature-item .icon { font-size: 24px; margin-bottom: 8px; }
+        .feature-item .feat-label { color: #a8d8ea; font-size: 12px; font-weight: 700; }
+        .btn-back { padding: 14px 40px; background: transparent; border: 2px solid #0097d6; color: #56c2f5; border-radius: 12px; font-size: 15px; font-weight: 700; font-family: 'Nunito', sans-serif; cursor: pointer; transition: all 0.2s; }
+        .btn-back:hover { background: rgba(0,151,214,0.15); transform: translateY(-2px); }
+
+        /* PERSONS CONTROL */
+        .persons-row { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+        .person-btn { background: linear-gradient(135deg, #0097d6, #00c4a7); border: none; color: #fff; font-size: 20px; font-weight: 700; width: 38px; height: 38px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.2s; flex-shrink: 0; }
+        .person-btn:hover { transform: scale(1.15); }
+        .persons-display { background: rgba(255,255,255,0.08); border: 1px solid rgba(86,194,245,0.3); border-radius: 12px; padding: 8px 24px; text-align: center; min-width: 90px; }
+        .persons-num { color: #fff; font-size: 22px; font-weight: 700; display: block; line-height: 1; }
+        .persons-lbl { color: #7ab8d4; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+        .per-person-hint { color: #7ab8d4; font-size: 12px; margin-top: -12px; margin-bottom: 20px; padding: 7px 12px; background: rgba(0,196,167,0.08); border-radius: 8px; border-left: 3px solid #00c4a7; }
+
+        /* RESULT EXPANDABLE SECTIONS */
+        .result-tabs { display: flex; gap: 10px; margin: 20px 0 0 0; flex-wrap: wrap; }
+        .result-tab-btn { flex: 1; min-width: 100px; padding: 12px 10px; border-radius: 12px; border: 2px solid rgba(86,194,245,0.25); background: rgba(255,255,255,0.05); color: #a8d8ea; font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; text-align: center; }
+        .result-tab-btn:hover { border-color: rgba(86,194,245,0.6); background: rgba(86,194,245,0.08); }
+        .result-tab-btn.active { background: linear-gradient(135deg, #0097d6, #00c4a7); border-color: transparent; color: #fff; }
+        .result-tab-btn .tab-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+        .result-section { display: none; margin-top: 16px; }
+        .result-section.open { display: block; }
+        .res-card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 16px 18px; margin-bottom: 12px; transition: border-color 0.2s; }
+        .res-card:hover { border-color: rgba(86,194,245,0.4); }
+        .res-card-name { color: #fff; font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+        .res-card-detail { color: #7ab8d4; font-size: 13px; margin-bottom: 4px; }
+        .res-card-price { color: #00c4a7; font-weight: 700; font-size: 14px; margin-top: 6px; }
+        .res-card-badge { display: inline-block; background: rgba(0,196,167,0.15); border: 1px solid rgba(0,196,167,0.3); border-radius: 20px; padding: 2px 10px; font-size: 11px; color: #00c4a7; font-weight: 700; margin-top: 4px; }
+        .res-transport-card { display: flex; align-items: center; gap: 14px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 14px 18px; margin-bottom: 10px; }
+        .res-t-icon { font-size: 28px; }
+        .res-t-name { color: #fff; font-weight: 700; font-size: 14px; }
+        .res-t-detail { color: #7ab8d4; font-size: 12px; margin-top: 2px; }
+        .res-t-price { color: #00c4a7; font-weight: 700; font-size: 15px; margin-left: auto; text-align: right; }
+        .res-t-duration { color: #7ab8d4; font-size: 11px; margin-top: 2px; }
+        .no-data-msg { color: #7ab8d4; font-size: 13px; padding: 20px; text-align: center; background: rgba(255,255,255,0.03); border-radius: 12px; }
+
+        /* STAY PREFERENCE TOGGLE */
+        .stay-toggle-row { display: flex; gap: 12px; margin-bottom: 20px; }
+        .stay-option { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 10px; border-radius: 14px; border: 2px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05); cursor: pointer; transition: all 0.25s; text-align: center; }
+        .stay-option:hover { border-color: rgba(86,194,245,0.5); background: rgba(86,194,245,0.07); }
+        .stay-option.selected { border-color: #00c4a7; background: rgba(0,196,167,0.12); box-shadow: 0 0 0 1px rgba(0,196,167,0.3); }
+        .stay-option .stay-icon { font-size: 28px; }
+        .stay-option .stay-label { color: #fff; font-size: 13px; font-weight: 700; }
+        .stay-option .stay-sub { color: #7ab8d4; font-size: 11px; }
+        .stay-option.selected .stay-label { color: #00c4a7; }
+        .stay-savings-note { font-size: 11px; color: #00c4a7; margin-top: 4px; background: rgba(0,196,167,0.1); border-radius: 6px; padding: 4px 8px; display: none; }
+        .stay-option.selected .stay-savings-note { display: block; }
+
+        /* TRIP SUMMARY CARD */
+        .trip-summary-wrap { width: 100%; max-width: 700px; margin-bottom: 20px; }
+        .trip-summary-card { background: #0f1f2e; border: 1px solid rgba(86,194,245,0.2); border-radius: 16px; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+        .trip-summary-header { background: linear-gradient(135deg, #0f2a3a, #0a1e2e); padding: 14px 20px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid rgba(86,194,245,0.15); }
+        .trip-summary-header .ts-icon { font-size: 18px; }
+        .trip-summary-header h3 { font-family: 'Playfair Display', serif; color: #fff; font-size: 18px; }
+        .ts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+        .ts-cell { padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); border-right: 1px solid rgba(255,255,255,0.06); }
+        .ts-cell:nth-child(even) { border-right: none; }
+        .ts-cell:nth-last-child(-n+2) { border-bottom: none; }
+        .ts-cell.full-width { grid-column: 1 / -1; border-right: none; }
+        .ts-label { color: #56c2f5; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+        .ts-value { color: #e0f0ff; font-size: 13px; line-height: 1.55; font-weight: 600; }
+        .ts-value.highlight { color: #00c4a7; font-size: 20px; font-weight: 700; font-family: 'Playfair Display', serif; }
+        .ts-value.warn { color: #f4a261; font-weight: 700; }
+        .ts-loading { display: flex; align-items: center; gap: 10px; color: #7ab8d4; font-size: 13px; padding: 24px 20px; }
+
+        /* TRANSPORT SELECTION PAGE */
+        #transportSelectPage { background: #0f1923; flex-direction: column; align-items: center; padding: 40px 20px 60px; min-height: 100vh; }
+        .ts-page-wrap { width: 100%; max-width: 600px; }
+        .ts-page-back { background: transparent; border: none; color: #7ab8d4; font-size: 13px; font-family: 'Nunito',sans-serif; cursor: pointer; margin-bottom: 20px; display: flex; align-items: center; gap: 6px; padding: 0; }
+        .ts-page-back:hover { color: #fff; }
+        .ts-page-title { font-family: 'Playfair Display', serif; color: #fff; font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+        .ts-page-meta { color: #56c2f5; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+        .ts-page-sub { color: #7ab8d4; font-size: 13px; margin-bottom: 20px; }
+        .ts-no-flight { background: rgba(255,107,107,0.08); border: 1px solid rgba(255,107,107,0.25); border-radius: 10px; padding: 10px 14px; font-size: 12px; color: #ff8a8a; margin-bottom: 16px; }
+        .ts-section-label { color: #56c2f5; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin: 20px 0 10px; display: flex; align-items: center; gap: 10px; }
+        .ts-section-line { flex: 1; height: 1px; background: rgba(255,255,255,0.07); }
+        .ts-tr-card { background: #0d1c2a; border: 1.5px solid rgba(255,255,255,0.08); border-radius: 14px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s; overflow: hidden; }
+        .ts-tr-card:hover { border-color: rgba(86,194,245,0.5); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.3); }
+        .ts-tr-card.picked { border-color: #00c4a7; background: rgba(0,196,167,0.07); box-shadow: 0 0 0 1px rgba(0,196,167,0.2); }
+        .ts-tr-inner { padding: 16px 18px 14px; }
+        .ts-tr-top { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+        .ts-tr-icon { width: 40px; height: 40px; border-radius: 10px; background: rgba(255,255,255,0.07); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+        .ts-tr-mid { flex: 1; }
+        .ts-tr-name { color: #fff; font-weight: 700; font-size: 15px; }
+        .ts-tr-sub { color: #7ab8d4; font-size: 12px; margin-top: 2px; }
+        .ts-tr-price-col { text-align: right; }
+        .ts-tr-price { color: #00c4a7; font-size: 22px; font-weight: 700; font-family: 'Playfair Display', serif; line-height: 1; }
+        .ts-tr-price-label { color: #7ab8d4; font-size: 10px; margin-top: 3px; }
+        .ts-tr-chips { display: flex; gap: 7px; flex-wrap: wrap; }
+        .ts-chip { display: inline-flex; align-items: center; gap: 4px; border-radius: 20px; padding: 4px 11px; font-size: 11px; font-weight: 700; border: 1px solid; }
+        .ts-chip.comfort  { background: rgba(86,194,245,0.1); border-color: rgba(86,194,245,0.3); color: #56c2f5; }
+        .ts-chip.budget   { background: rgba(0,196,167,0.1);  border-color: rgba(0,196,167,0.3);  color: #00c4a7; }
+        .ts-chip.fast     { background: rgba(155,93,229,0.1); border-color: rgba(155,93,229,0.3); color: #b87fff; }
+        .ts-chip.dur      { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); color: #a8d8ea; }
+        .ts-chip.pct      { background: rgba(244,162,97,0.1); border-color: rgba(244,162,97,0.25); color: #f4a261; }
+        .ts-tr-footer { background: rgba(255,255,255,0.03); border-top: 1px solid rgba(255,255,255,0.07); padding: 11px 18px; display: flex; justify-content: space-between; align-items: center; }
+        .ts-tr-footer-label { color: #7ab8d4; font-size: 12px; }
+        .ts-tr-footer-val { color: #fff; font-weight: 700; font-size: 15px; }
+        .ts-tr-card.picked .ts-tr-footer-val { color: #00c4a7; }
+        .ts-local-box { background: rgba(0,151,214,0.07); border-left: 3px solid #0097d6; border-radius: 0 12px 12px 0; padding: 14px 16px; color: #a8d8ea; font-size: 13px; line-height: 1.7; margin-bottom: 20px; }
+        .ts-proceed-btn { width: 100%; padding: 15px; background: linear-gradient(135deg, #0097d6, #00c4a7); color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 700; font-family: 'Nunito',sans-serif; cursor: pointer; margin-top: 20px; transition: all 0.2s; display: none; }
+        .ts-proceed-btn.show { display: block; }
+        .ts-proceed-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,151,214,0.4); }
+        .ts-picked-bar { background: rgba(0,196,167,0.1); border: 1.5px solid rgba(0,196,167,0.35); border-radius: 12px; padding: 13px 18px; margin-bottom: 16px; display: none; align-items: center; gap: 10px; }
+        .ts-picked-bar.show { display: flex; }
+        .ts-picked-bar-text { color: #00c4a7; font-weight: 700; font-size: 13px; flex: 1; }
+        .ts-picked-bar-clear { color: #7ab8d4; font-size: 12px; cursor: pointer; text-decoration: underline; }
+
+        /* Budget insufficient warning */
+        .budget-warn-page { background: #0f1923; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; min-height: 100vh; }
+        .budget-warn-card { background: rgba(255,107,107,0.07); border: 2px solid rgba(255,107,107,0.3); border-radius: 20px; padding: 40px 36px; max-width: 500px; width: 100%; text-align: center; }
+        .budget-warn-icon { font-size: 56px; margin-bottom: 16px; }
+        .budget-warn-title { font-family: 'Playfair Display', serif; color: #ff6b6b; font-size: 26px; margin-bottom: 12px; }
+        .budget-warn-msg { color: #a8d8ea; font-size: 14px; line-height: 1.7; margin-bottom: 20px; }
+        .budget-warn-breakdown { background: rgba(0,0,0,0.2); border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; text-align: left; }
+        .budget-warn-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; }
+        .budget-warn-row:last-child { border-bottom: none; font-weight: 700; }
+        .budget-warn-row .bw-label { color: #7ab8d4; }
+        .budget-warn-row .bw-val { color: #fff; }
+        .budget-warn-row .bw-val.red { color: #ff6b6b; }
+        .budget-warn-row .bw-val.green { color: #00c4a7; }
+        .budget-warn-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+        .btn-warn-back { padding: 12px 28px; background: transparent; border: 2px solid rgba(86,194,245,0.4); color: #56c2f5; border-radius: 12px; font-size: 14px; font-weight: 700; font-family: 'Nunito',sans-serif; cursor: pointer; }
+        .btn-warn-proceed { padding: 12px 28px; background: linear-gradient(135deg, #0097d6, #00c4a7); color: #fff; border: none; border-radius: 12px; font-size: 14px; font-weight: 700; font-family: 'Nunito',sans-serif; cursor: pointer; }
+
+        /* AI PLAN RESULT STYLES */
+        .ai-badge { display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, rgba(0,151,214,0.2), rgba(0,196,167,0.2)); border: 1px solid rgba(86,194,245,0.35); border-radius: 20px; padding: 5px 14px; font-size: 12px; color: #56c2f5; font-weight: 700; margin-bottom: 16px; letter-spacing: 0.5px; }
+        .ai-dot { width: 7px; height: 7px; border-radius: 50%; background: #00c4a7; animation: pulse 1.5s infinite; display: inline-block; }
+        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+        .ai-status { color: #56c2f5; font-size: 13px; font-weight: 700; letter-spacing: 1px; margin-top: 4px; }
+        .ai-content { color: #c8e4f0; font-size: 14px; line-height: 1.8; }
+        .ai-content h3 { font-family: 'Playfair Display', serif; color: #fff; font-size: 18px; margin: 20px 0 10px; }
+        .ai-content h4 { color: #56c2f5; font-size: 15px; margin: 16px 0 8px; font-family: 'Nunito', sans-serif; }
+        .ai-content ul { padding-left: 18px; margin: 8px 0; }
+        .ai-content li { margin-bottom: 6px; color: #a8d8ea; }
+        .ai-content strong { color: #00c4a7; }
+        .ai-content .day-block { background: rgba(255,255,255,0.04); border: 1px solid rgba(86,194,245,0.15); border-radius: 14px; padding: 18px 20px; margin-bottom: 14px; }
+        .ai-content .cost-badge { display: inline-block; background: rgba(0,196,167,0.12); border: 1px solid rgba(0,196,167,0.3); border-radius: 20px; padding: 2px 10px; font-size: 12px; color: #00c4a7; font-weight: 700; margin: 2px; }
+        .ai-content .tip-box { background: rgba(0,151,214,0.08); border-left: 3px solid #0097d6; border-radius: 0 10px 10px 0; padding: 12px 16px; margin: 12px 0; font-size: 13px; color: #a8d8ea; }
+        .tab-loading { display: flex; align-items: center; gap: 10px; color: #7ab8d4; font-size: 14px; padding: 20px 0; }
+        .mini-loader { border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid #0097d6; border-radius: 50%; width: 20px; height: 20px; animation: spin 0.9s linear infinite; }
+
+        /* THEME & MODAL */
+        body.light{background:#f0f4f8;}
+        body.light #dashboardPage{background:#f0f4f8;}
+        body.light .result-card{background:rgba(255,255,255,0.95);border-color:rgba(0,0,0,0.1);}
+        body.light .result-row .label{color:#5a7a8a;} body.light .result-row .value{color:#1a2a3a;}
+        body.light .plan-card{background:rgba(255,255,255,0.95);border-color:rgba(0,0,0,0.1);}
+        body.light .plan-card input,body.light .plan-card select{background:#fff;color:#1a2a3a;border-color:rgba(0,0,0,0.2);}
+        body.light .plan-card h2,.light .section-title{color:#1a2a3a;}
+        body.light .field-label{color:#5a7a8a;}
+        body.light .ai-content{color:#2a3a4a;} body.light .ai-content li{color:#3a4a5a;}
+        body.light .ts-tr-card{background:#fff;border-color:rgba(0,0,0,0.1);}
+        body.light .ts-tr-name{color:#1a2a3a;} body.light .ts-tr-sub{color:#5a7a8a;}
+        body.light .trip-summary-card{background:#fff;} body.light .ts-value{color:#1a2a3a;}
+        body.light .modal-box{background:#fff;border-color:rgba(0,0,0,0.1);} body.light .modal-title{color:#1a2a3a;}
+
+        .theme-toggle{position:fixed;top:16px;right:16px;z-index:9999;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:20px;transition:all 0.3s;backdrop-filter:blur(10px);box-shadow:0 4px 12px rgba(0,0,0,0.3);}
+        .theme-toggle:hover{transform:scale(1.1);}
+        body.light .theme-toggle{background:rgba(0,0,0,0.08);border-color:rgba(0,0,0,0.15);}
+
+        .fab-group{position:fixed;bottom:24px;right:16px;z-index:9998;display:none;flex-direction:column;gap:12px;align-items:flex-end;}
+        .fab-row{display:flex;align-items:center;gap:8px;}
+        .fab{width:50px;height:50px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 4px 16px rgba(0,0,0,0.4);transition:all 0.25s;}
+        .fab:hover{transform:scale(1.15);}
+        .fab-label{background:rgba(10,20,35,0.85);color:#fff;font-size:11px;font-weight:700;border-radius:8px;padding:4px 10px;white-space:nowrap;}
+        .fab-chat{background:linear-gradient(135deg,#0097d6,#00c4a7);}
+        .fab-weather{background:linear-gradient(135deg,#f4a261,#e76f51);}
+        .fab-expense{background:linear-gradient(135deg,#9b5de5,#7b2ff7);}
+        .fab-tools{background:linear-gradient(135deg,#2d6a4f,#40916c);}
+
+        .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(80px);background:#0f2a3a;border:1px solid rgba(0,196,167,0.4);border-radius:12px;padding:12px 20px;color:#00c4a7;font-size:13px;font-weight:700;z-index:99999;transition:transform 0.3s;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,0.5);pointer-events:none;}
+        .toast.show{transform:translateX(-50%) translateY(0);}
+
+        .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:10000;display:none;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(6px);}
+        .modal-overlay.open{display:flex;}
+        .modal-box{background:#0f1e2d;border:1px solid rgba(86,194,245,0.2);border-radius:20px;padding:24px;width:100%;max-width:520px;max-height:88vh;overflow-y:auto;box-shadow:0 24px 60px rgba(0,0,0,0.7);}
+        .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+        .modal-title{font-family:'Playfair Display',serif;color:#fff;font-size:20px;}
+        .modal-close{background:rgba(255,255,255,0.06);border:none;color:#7ab8d4;font-size:18px;cursor:pointer;padding:6px 10px;border-radius:10px;}
+        .modal-close:hover{background:rgba(255,255,255,0.12);color:#fff;}
+
+        .google-btn{width:100%;padding:13px;background:#fff;color:#444;border:none;border-radius:10px;font-size:15px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:12px;transition:all 0.2s;box-shadow:0 2px 8px rgba(0,0,0,0.2);}
+        .divider{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+        .divider-line{flex:1;height:1px;background:rgba(255,255,255,0.12);}
+        .divider-text{color:rgba(255,255,255,0.4);font-size:12px;}
+
+        /* CHAT */
+        .chat-messages{height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
+        .chat-msg{max-width:85%;padding:11px 15px;border-radius:16px;font-size:13px;line-height:1.6;}
+        .chat-msg.user{background:linear-gradient(135deg,#0097d6,#00c4a7);color:#fff;align-self:flex-end;border-bottom-right-radius:4px;}
+        .chat-msg.ai{background:rgba(255,255,255,0.07);color:#c8e4f0;border:1px solid rgba(255,255,255,0.08);align-self:flex-start;border-bottom-left-radius:4px;}
+        .chat-msg.ai.thinking{color:#7ab8d4;font-style:italic;}
+        .chat-suggestions{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;}
+        .chat-sug{padding:5px 12px;background:rgba(0,151,214,0.1);border:1px solid rgba(86,194,245,0.25);border-radius:20px;color:#56c2f5;font-size:11px;font-weight:700;cursor:pointer;}
+        .chat-input-row{display:flex;gap:8px;}
+        .chat-input{flex:1;padding:11px 14px;border-radius:12px;border:1px solid rgba(86,194,245,0.3);background:rgba(255,255,255,0.07);color:#fff;font-size:14px;font-family:'Nunito',sans-serif;outline:none;}
+        .chat-send{padding:11px 16px;background:linear-gradient(135deg,#0097d6,#00c4a7);border:none;border-radius:12px;color:#fff;font-size:18px;cursor:pointer;}
+
+        /* WEATHER */
+        .weather-card{background:linear-gradient(135deg,rgba(0,151,214,0.12),rgba(0,196,167,0.08));border:1px solid rgba(86,194,245,0.2);border-radius:14px;padding:18px;margin-bottom:12px;}
+        .weather-top{display:flex;align-items:center;gap:14px;margin-bottom:12px;}
+        .weather-icon{font-size:44px;}
+        .weather-temp{font-family:'Playfair Display',serif;font-size:34px;color:#fff;}
+        .weather-desc{color:#a8d8ea;font-size:13px;}
+        .weather-details{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+        .weather-detail-item{background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 12px;}
+        .weather-detail-label{color:#7ab8d4;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+        .weather-detail-val{color:#fff;font-size:14px;font-weight:700;margin-top:2px;}
+        .weather-input-row{display:flex;gap:8px;margin-bottom:14px;}
+        .weather-input{flex:1;padding:10px 14px;border-radius:10px;border:1px solid rgba(86,194,245,0.3);background:rgba(255,255,255,0.07);color:#fff;font-size:13px;font-family:'Nunito',sans-serif;outline:none;}
+        .weather-btn{padding:10px 16px;background:linear-gradient(135deg,#f4a261,#e76f51);border:none;border-radius:10px;color:#fff;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;font-size:13px;}
+
+        /* EXPENSE */
+        .expense-summary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;}
+        .expense-sum-card{background:rgba(255,255,255,0.05);border-radius:12px;padding:12px;text-align:center;border:1px solid rgba(255,255,255,0.07);}
+        .expense-sum-label{color:#7ab8d4;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;}
+        .expense-sum-val{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;margin-top:4px;}
+        .expense-sum-val.green{color:#00c4a7;} .expense-sum-val.red{color:#ff6b6b;} .expense-sum-val.white{color:#fff;}
+        .expense-add-form{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+        .expense-input{padding:10px 12px;border-radius:10px;border:1px solid rgba(86,194,245,0.25);background:rgba(255,255,255,0.07);color:#fff;font-size:13px;font-family:'Nunito',sans-serif;outline:none;}
+        .expense-select{padding:10px 12px;border-radius:10px;border:1px solid rgba(86,194,245,0.25);background:rgba(15,25,35,0.95);color:#fff;font-size:13px;font-family:'Nunito',sans-serif;outline:none;}
+        .expense-add-btn{grid-column:1/-1;padding:11px;background:linear-gradient(135deg,#9b5de5,#7b2ff7);border:none;border-radius:10px;color:#fff;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;}
+        .expense-list{max-height:200px;overflow-y:auto;}
+        .expense-item{display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(255,255,255,0.04);border-radius:10px;margin-bottom:6px;border:1px solid rgba(255,255,255,0.06);}
+        .expense-item-cat{font-size:18px;} .expense-item-name{flex:1;color:#c8e4f0;font-size:13px;}
+        .expense-item-person{color:#7ab8d4;font-size:11px;}
+        .expense-item-amt{color:#00c4a7;font-weight:700;font-size:14px;}
+        .expense-item-del{background:none;border:none;color:#ff6b6b;cursor:pointer;font-size:16px;}
+        .split-section{background:rgba(155,93,229,0.08);border:1px solid rgba(155,93,229,0.2);border-radius:12px;padding:12px;margin-top:10px;}
+        .split-title{color:#b87fff;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;}
+        .split-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;color:#c8e4f0;}
+        .split-row:last-child{border-bottom:none;font-weight:700;color:#b87fff;}
+
+        /* PACKING */
+        .pack-categories{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px;}
+        .pack-cat-btn{padding:5px 12px;border-radius:20px;border:1px solid rgba(86,194,245,0.25);background:rgba(255,255,255,0.05);color:#a8d8ea;font-size:11px;font-weight:700;cursor:pointer;}
+        .pack-cat-btn.active{background:linear-gradient(135deg,#0097d6,#00c4a7);border-color:transparent;color:#fff;}
+        .pack-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;margin-bottom:5px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.04);cursor:pointer;}
+        .pack-item.checked{background:rgba(0,196,167,0.07);border-color:rgba(0,196,167,0.25);}
+        .pack-checkbox{width:20px;height:20px;border-radius:6px;border:2px solid rgba(86,194,245,0.4);background:transparent;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-size:12px;}
+        .pack-item.checked .pack-checkbox{background:#00c4a7;border-color:#00c4a7;}
+        .pack-item-name{color:#c8e4f0;font-size:13px;flex:1;}
+        .pack-item.checked .pack-item-name{text-decoration:line-through;color:#7ab8d4;}
+        .pack-progress{background:rgba(255,255,255,0.08);border-radius:20px;height:7px;margin-bottom:12px;overflow:hidden;}
+        .pack-progress-bar{height:100%;background:linear-gradient(135deg,#0097d6,#00c4a7);border-radius:20px;transition:width 0.4s;}
+        .pack-progress-text{color:#7ab8d4;font-size:12px;margin-bottom:6px;}
+
+        /* CURRENCY */
+        .currency-grid{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px;margin-bottom:14px;}
+        .currency-box{background:rgba(255,255,255,0.06);border:1px solid rgba(86,194,245,0.2);border-radius:12px;padding:12px;}
+        .currency-label{color:#7ab8d4;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;}
+        .currency-amount{font-family:'Playfair Display',serif;font-size:22px;color:#fff;font-weight:700;}
+        .currency-swap{font-size:22px;cursor:pointer;transition:transform 0.4s;text-align:center;}
+        .currency-swap:hover{transform:rotate(180deg);}
+        .currency-input{width:100%;background:none;border:none;font-family:'Playfair Display',serif;font-size:22px;color:#fff;outline:none;}
+        .currency-select{width:100%;background:none;border:none;color:#56c2f5;font-size:12px;font-weight:700;font-family:'Nunito',sans-serif;outline:none;cursor:pointer;}
+        .currency-rates{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:12px;}
+        .currency-rate-item{background:rgba(255,255,255,0.05);border-radius:10px;padding:8px;text-align:center;}
+        .currency-rate-flag{font-size:18px;} .currency-rate-code{color:#7ab8d4;font-size:10px;font-weight:700;}
+        .currency-rate-val{color:#00c4a7;font-size:12px;font-weight:700;margin-top:2px;}
+
+        /* PHRASES */
+        .phrase-category{margin-bottom:16px;}
+        .phrase-cat-title{color:#56c2f5;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+        .phrase-cat-line{flex:1;height:1px;background:rgba(86,194,245,0.15);}
+        .phrase-item{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:10px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:10px;}
+        .phrase-english{color:#7ab8d4;font-size:11px;margin-bottom:2px;}
+        .phrase-local{color:#fff;font-size:14px;font-weight:700;}
+        .phrase-pronounce{color:#f4a261;font-size:11px;font-style:italic;margin-top:1px;}
+        .phrase-speak{background:none;border:1px solid rgba(86,194,245,0.2);border-radius:8px;padding:5px 9px;color:#56c2f5;font-size:15px;cursor:pointer;}
+
+        /* MAPS */
+        .map-frame{width:100%;height:320px;border-radius:14px;border:1px solid rgba(86,194,245,0.2);overflow:hidden;}
+        .map-links{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+        .map-link-btn{flex:1;padding:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(86,194,245,0.2);border-radius:10px;color:#56c2f5;font-size:13px;font-weight:700;text-align:center;cursor:pointer;text-decoration:none;transition:all 0.2s;display:block;}
+
+        /* SAVE/SHARE */
+        .saved-trips-list{max-height:280px;overflow-y:auto;margin-bottom:14px;}
+        .saved-trip-item{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;}
+        .saved-trip-info{flex:1;}
+        .saved-trip-name{color:#fff;font-weight:700;font-size:14px;}
+        .saved-trip-meta{color:#7ab8d4;font-size:11px;margin-top:2px;}
+        .saved-trip-del{background:none;border:none;color:#ff6b6b;font-size:17px;cursor:pointer;}
+        .share-options{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+        .share-btn{padding:11px;border:none;border-radius:12px;font-weight:700;font-size:13px;font-family:'Nunito',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;}
+        .share-whatsapp{background:#25D366;color:#fff;}
+        .share-copy{background:rgba(86,194,245,0.12);border:1px solid rgba(86,194,245,0.3);color:#56c2f5;}
+        .share-email{background:rgba(244,162,97,0.12);border:1px solid rgba(244,162,97,0.3);color:#f4a261;}
+        .share-pdf{background:rgba(255,107,107,0.12);border:1px solid rgba(255,107,107,0.3);color:#ff6b6b;}
+        /* TOP RIGHT USER PROFILE COMPONENT */
+        .top-profile-badge {
+            position: fixed; top: 18px; right: 20px; z-index: 9999;
+            display: none; align-items: center; gap: 10px;
+            background: rgba(15, 25, 35, 0.9); backdrop-filter: blur(12px);
+            border: 1.5px solid rgba(86, 194, 245, 0.3);
+            border-radius: 30px; padding: 6px 14px 6px 8px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+            cursor: pointer; transition: all 0.2s;
+        }
+        .top-profile-badge:hover {
+            border-color: #00c4a7; transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(0, 196, 167, 0.25);
+        }
+        .profile-avatar {
+            width: 34px; height: 34px; border-radius: 50%;
+            background: linear-gradient(135deg, #0097d6, #00c4a7);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; color: #fff; font-size: 14px;
+            box-shadow: 0 2px 10px rgba(0, 151, 214, 0.4);
+            flex-shrink: 0;
+        }
+        .profile-info { display: flex; flex-direction: column; text-align: left; }
+        .profile-name-row { display: flex; align-items: center; gap: 5px; }
+        .profile-username { color: #fff; font-weight: 700; font-size: 13px; max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .verified-tick { background: #00c4a7; color: #0d1c2a; font-size: 9px; font-weight: 900; border-radius: 50%; width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; }
+        .profile-tag { color: #56c2f5; font-size: 10px; font-weight: 600; letter-spacing: 0.5px; }
+
+        /* PROFILE DROPDOWN */
+        .profile-dropdown {
+            position: fixed; top: 68px; right: 20px; z-index: 9999;
+            width: 270px; background: #0f1f2e; border: 1.5px solid rgba(86, 194, 245, 0.3);
+            border-radius: 18px; box-shadow: 0 16px 50px rgba(0,0,0,0.6);
+            display: none; flex-direction: column; overflow: hidden;
+            animation: dropFadeIn 0.2s ease;
+        }
+        @keyframes dropFadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+        .profile-drop-header { padding: 18px 20px; background: linear-gradient(135deg, #0e2738, #0a1b28); border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .profile-drop-header .p-name { color: #fff; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+        .profile-drop-header .p-email { color: #7ab8d4; font-size: 12px; margin-top: 3px; word-break: break-all; }
+        .profile-drop-status { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; background: rgba(0, 196, 167, 0.15); border: 1px solid rgba(0, 196, 167, 0.4); border-radius: 20px; padding: 3px 10px; font-size: 11px; color: #00c4a7; font-weight: 700; }
+        .profile-drop-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+        .profile-menu-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; color: #d0e6f5; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; text-decoration: none; border: none; background: transparent; width: 100%; text-align: left; }
+        .profile-menu-item:hover { background: rgba(86, 194, 245, 0.12); color: #fff; }
+        .profile-menu-item.logout { color: #ff6b6b; border-top: 1px solid rgba(255,255,255,0.06); border-radius: 0 0 16px 16px; margin-top: 4px; }
+        .profile-menu-item.logout:hover { background: rgba(255, 107, 107, 0.15); color: #ff8a8a; }
+
+        /* OTP MODAL STYLING */
+        .otp-input-container { display: flex; justify-content: center; gap: 10px; margin: 24px 0 16px; }
+        .otp-digit { width: 44px; height: 52px; font-size: 24px; font-weight: 700; text-align: center; border-radius: 12px; border: 2px solid rgba(86,194,245,0.3); background: rgba(255,255,255,0.08); color: #00c4a7; outline: none; transition: border-color 0.2s; }
+        .otp-digit:focus { border-color: #00c4a7; box-shadow: 0 0 12px rgba(0,196,167,0.3); }
+        .otp-demo-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(244,162,97,0.15); border: 1px dashed rgba(244,162,97,0.4); border-radius: 12px; padding: 6px 14px; color: #f4a261; font-size: 12px; font-weight: 700; cursor: pointer; margin-bottom: 18px; }
+        .otp-demo-badge:hover { background: rgba(244,162,97,0.25); }
+    </style>
+</head>
+<body>
+
+<!-- BACKEND STATUS BADGE -->
+<div class="server-status-badge" id="serverStatusBadge">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">Connecting Backend...</span>
+</div>
+
+<!-- TOP RIGHT USER PROFILE COMPONENT -->
+<div class="top-profile-badge" id="topProfileBadge" onclick="toggleProfileDropdown()">
+    <div class="profile-avatar" id="topProfileAvatar">U</div>
+    <div class="profile-info">
+        <div class="profile-name-row">
+            <span class="profile-username" id="topProfileName">Traveler</span>
+            <span class="verified-tick" id="topProfileVerified" title="IRCTC & Email Verified">✓</span>
+        </div>
+        <span class="profile-tag" id="topProfileTag">Verified Member</span>
+    </div>
+    <span style="font-size:11px;color:#7ab8d4;margin-left:2px;">▼</span>
+</div>
+
+<!-- PROFILE DROPDOWN MENU -->
+<div class="profile-dropdown" id="profileDropdown">
+    <div class="profile-drop-header">
+        <div class="p-name">
+            <span id="dropProfileName">Traveler</span>
+            <span class="verified-tick" id="dropProfileVerified">✓</span>
+        </div>
+        <div class="p-email" id="dropProfileEmail">user@example.com</div>
+        <div class="profile-drop-status" id="dropProfileStatus">
+            <span>🛡️ IRCTC Verified Member</span>
+        </div>
+    </div>
+    <div class="profile-drop-body">
+        <button class="profile-menu-item" onclick="openModal('saveModal'); toggleProfileDropdown(false);">
+            <span>📁</span> <span>Saved Trips &amp; Itineraries</span>
+        </button>
+        <button class="profile-menu-item" onclick="openAllTrainsModal(); toggleProfileDropdown(false);">
+            <span>🚆</span> <span>IRCTC Trains Live Status</span>
+        </button>
+        <button class="profile-menu-item" onclick="openModal('currencyModal'); toggleProfileDropdown(false);">
+            <span>💱</span> <span>Currency Converter</span>
+        </button>
+        <button class="profile-menu-item" onclick="openModal('packingModal'); toggleProfileDropdown(false);">
+            <span>🎒</span> <span>Travel Packing Checklist</span>
+        </button>
+        <button class="profile-menu-item logout" onclick="handleLogout()">
+            <span>🚪</span> <span>Sign Out / Log Out</span>
+        </button>
+    </div>
+</div>
+
+<!-- LOGIN PAGE -->
+<div id="loginPage" class="page">
+    <div class="login-logo">&#9992; SmartTour</div>
+    <div class="login-tagline">Discover &middot; Explore &middot; Travel</div>
+    <div class="login-card">
+        <button class="google-btn" onclick="googleLogin()">
+            <img src="https://www.google.com/favicon.ico" width="18" height="18" alt="G"> Continue with Google
+        </button>
+        <div class="divider"><div class="divider-line"></div><div class="divider-text">or</div><div class="divider-line"></div></div>
+        <input type="text" id="loginName" placeholder="Full Name (optional for demo)">
+        <input type="email" id="email" placeholder="Email address">
+        <input type="password" id="password" placeholder="Password">
+        <button class="btn-primary" id="loginBtn" onclick="validateLogin()">Sign In / Register</button>
+        <p id="errorMsg" class="error"></p>
+    </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboardPage" class="page">
+    <div class="dash-hero">
+        <div class="dash-hero-content">
+            <h2>Where to next?</h2>
+            <p>Explore top destinations and plan your perfect journey</p>
+        </div>
+    </div>
+    <div class="dash-body">
+        <p class="section-title">Popular Destinations</p>
+        <div class="dash-destinations" id="destCardsList">
+            <!-- Rendered dynamically from backend or fallback -->
+        </div>
+        <div class="dash-cta-section">
+            <div>
+                <h3>Plan Your Dream Trip</h3>
+                <p>Enter your destination, budget, and travel preferences — we'll handle the rest with a tailored itinerary just for you.</p>
+            </div>
+            <button class="btn-cta" onclick="goToPlan()">Plan New Trip →</button>
+        </div>
+    </div>
+</div>
+
+<!-- DESTINATION DETAIL PAGE -->
+<div id="destDetailPage" class="page">
+    <div class="dest-detail-hero" id="detailHero">
+        <div class="dest-detail-hero-content">
+            <h2 id="detailTitle">Agra</h2>
+            <p id="detailSubtitle">Choose your budget to see the best options</p>
+        </div>
+    </div>
+    <div class="dest-detail-body">
+        <button class="btn-back-dash" onclick="showPage('dashboardPage')">← Back to Destinations</button>
+
+        <p class="section-title" style="margin-bottom:14px;">Enter Your Budget & Compare</p>
+        <div class="custom-budget-row">
+            <label>💰 Your Budget (₹)</label>
+            <input type="number" class="custom-budget-input" id="customBudget" placeholder="e.g. 15000" min="1000">
+            <button class="btn-compare" onclick="runComparison()">Compare Platforms →</button>
+        </div>
+        <p class="section-title" style="margin-bottom:14px; font-size:16px; color:#7ab8d4;">Or pick a preset</p>
+        <div class="budget-selector">
+            <button class="budget-btn" onclick="setPresetBudget(5000)">₹5,000</button>
+            <button class="budget-btn" onclick="setPresetBudget(10000)">₹10,000</button>
+            <button class="budget-btn" onclick="setPresetBudget(20000)">₹20,000</button>
+            <button class="budget-btn" onclick="setPresetBudget(50000)">₹50,000</button>
+        </div>
+
+        <!-- COMPARISON SECTION -->
+        <div class="compare-section" id="compareSection" style="display:none;">
+            <div class="compare-section-title"><span>📊</span> Platform Price Comparison</div>
+            <table class="compare-table" id="compareTable">
+                <thead>
+                    <tr>
+                        <th>Platform</th>
+                        <th>Hotel / Night</th>
+                        <th>Transport</th>
+                        <th>Total Est. Cost</th>
+                        <th>Verdict</th>
+                    </tr>
+                </thead>
+                <tbody id="compareBody"></tbody>
+            </table>
+            <div class="savings-bar" id="savingsBar">
+                <div>
+                    <div class="savings-text" id="savingsText"></div>
+                    <div class="savings-sub" id="savingsSub"></div>
+                </div>
+                <div style="font-size:28px;">💡</div>
+            </div>
+        </div>
+
+        <!-- PERSON SELECTOR -->
+        <div class="person-selector">
+            <label>👥 Travellers</label>
+            <div class="person-controls">
+                <button class="person-btn" onclick="changePerson(-1)">−</button>
+                <div>
+                    <div class="person-count" id="personCount">1</div>
+                    <div class="person-label-sub">person</div>
+                </div>
+                <button class="person-btn" onclick="changePerson(1)">+</button>
+            </div>
+        </div>
+
+        <!-- TOTAL COST BAR -->
+        <div class="total-cost-bar" id="totalCostBar" style="display:none;">
+            <div>
+                <div class="tc-label">Estimated Total Cost</div>
+                <div class="tc-note" id="totalCostNote"></div>
+            </div>
+            <div class="tc-value" id="totalCostValue">₹0</div>
+        </div>
+
+        <!-- PLACES TO VISIT -->
+        <div class="detail-section">
+            <div class="detail-section-title"><span>🗺️</span> Places to Visit</div>
+            <div class="cards-row" id="placesContainer"></div>
+        </div>
+
+        <!-- HOTELS -->
+        <div class="detail-section">
+            <div class="detail-section-title"><span>🏨</span> Affordable Hotels</div>
+            <div class="cards-row" id="hotelsContainer"></div>
+        </div>
+
+        <!-- TRANSPORT -->
+        <div class="detail-section">
+            <div class="detail-section-title"><span>🚗</span> Transport Options</div>
+            <div class="cards-row" id="transportContainer"></div>
+        </div>
+    </div>
+</div>
+
+<!-- PLAN TRIP PAGE -->
+<div id="planPage" class="page">
+    <div class="plan-card">
+        <h2>Plan Your Trip</h2>
+        <p class="subtitle">AI & Backend will craft your real itinerary</p>
+        <div class="ai-badge"><span class="ai-dot"></span> Powered by Express &amp; Groq AI</div>
+
+        <div class="field-label">Travelling From (Source City / Station)</div>
+        <input type="text" id="sourceCity" list="sourceStationsList" placeholder="e.g. Hyderabad, Vijayawada, Eluru, Rajahmundry" autocomplete="off" oninput="fetchStationSuggestions(this.value, 'sourceStationsList')">
+        <datalist id="sourceStationsList"></datalist>
+
+        <div class="field-label">Destination (City / Station)</div>
+        <input type="text" id="destination" list="destStationsList" placeholder="e.g. Tirupati, Goa, Visakhapatnam, Varanasi" autocomplete="off" oninput="fetchStationSuggestions(this.value, 'destStationsList')">
+        <datalist id="destStationsList"></datalist>
+
+        <div class="field-label">Number of Days</div>
+        <input type="number" id="days" placeholder="e.g. 5" min="1">
+
+        <div class="field-label">Travel Style</div>
+        <select id="travelStyle" style="width:100%;padding:13px 16px;margin-bottom:20px;border-radius:10px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.08);color:#fff;font-size:15px;font-family:'Nunito',sans-serif;outline:none;">
+            <option value="budget" style="background:#1a2a3a;">🎒 Budget Backpacker</option>
+            <option value="comfort" selected style="background:#1a2a3a;">😊 Comfort Traveller</option>
+            <option value="luxury" style="background:#1a2a3a;">💎 Luxury Explorer</option>
+            <option value="family" style="background:#1a2a3a;">👨‍👩‍👧 Family Trip</option>
+            <option value="adventure" style="background:#1a2a3a;">🧗 Adventure Seeker</option>
+            <option value="spiritual" style="background:#1a2a3a;">🙏 Spiritual Journey</option>
+        </select>
+
+        <div class="field-label">Number of Persons</div>
+        <div class="persons-row">
+            <button class="person-btn" onclick="changePlanPersons(-1)">−</button>
+            <div class="persons-display">
+                <span class="persons-num" id="planPersonsCount">1</span>
+                <span class="persons-lbl" id="planPersonsLabel">person</span>
+            </div>
+            <button class="person-btn" onclick="changePlanPersons(1)">+</button>
+        </div>
+
+        <div class="field-label">Total Budget (₹) — for all persons</div>
+        <input type="number" id="budget" placeholder="e.g. 25000" oninput="updatePerPersonHint()">
+        <div class="per-person-hint" id="perPersonHint">Budget per person: —</div>
+
+        <div class="field-label">Stay Preference</div>
+        <div class="stay-toggle-row">
+            <div class="stay-option selected" id="stayHotel" onclick="selectStay('hotel')">
+                <div class="stay-icon">🏨</div>
+                <div class="stay-label">Hotel</div>
+                <div class="stay-sub">Booked accommodation</div>
+                <div class="stay-savings-note">Standard pricing</div>
+            </div>
+            <div class="stay-option" id="stayRelative" onclick="selectStay('relative')">
+                <div class="stay-icon">🏠</div>
+                <div class="stay-label">Relative's House</div>
+                <div class="stay-sub">Stay with family/friends</div>
+                <div class="stay-savings-note">🎉 Save on accommodation!</div>
+            </div>
+        </div>
+
+        <button class="btn-primary" onclick="processTrip()">✨ Generate AI Plan</button>
+        <p id="planError" class="error"></p>
+    </div>
+</div>
+
+<!-- PROCESSING PAGE -->
+<div id="processingPage" class="page">
+    <img class="proc-img" src="https://images.unsplash.com/photo-1488085061387-422e29b40080?w=600&q=80" alt="Planning">
+    <h2>Crafting Your Journey...</h2>
+    <p id="procStatus">Sending details to backend AI engine</p>
+    <p class="ai-status" id="aiStatusText">⚡ AI is thinking...</p>
+    <div class="loader"></div>
+</div>
+
+<!-- TRANSPORT SELECTION PAGE -->
+<div id="transportSelectPage" class="page">
+    <div class="ts-page-wrap">
+        <button class="ts-page-back" onclick="showPage('planPage')">← Back to Plan</button>
+        <div class="ts-page-title">Choose Transport</div>
+        <div class="ts-page-meta" id="tsPageMeta"></div>
+        <div class="ts-page-sub">Select how you want to travel — cost will be deducted from your budget</div>
+
+        <div id="tsNoFlight" class="ts-no-flight" style="display:none;">✈ No direct flights for this route. Choose train or bus below.</div>
+
+        <!-- Picked bar -->
+        <div class="ts-picked-bar" id="tsPickedBar">
+            <span class="ts-picked-bar-text" id="tsPickedText"></span>
+            <span class="ts-picked-bar-clear" onclick="clearTsPick()">✕ Change</span>
+        </div>
+
+        <!-- All Trains on Route Banner -->
+        <div id="tsAllTrainsBanner" style="margin-bottom:18px;">
+            <button onclick="openAllTrainsModal()" style="width:100%;padding:14px 18px;background:linear-gradient(135deg, rgba(0,151,214,0.2), rgba(0,196,167,0.2));border:1.5px solid #00c4a7;border-radius:14px;color:#fff;font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all 0.2s;">
+                <span style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:22px;">🚆</span>
+                    <span><strong id="allTrainsBannerTitle">View All Trains on this Route &amp; Live IRCTC Seats</strong></span>
+                </span>
+                <span style="background:linear-gradient(135deg, #0097d6, #00c4a7);color:#fff;padding:6px 14px;border-radius:20px;font-size:11px;font-weight:800;letter-spacing:0.5px;">LIVE SEATS &amp; IRCTC ↗</span>
+            </button>
+        </div>
+
+        <!-- Cards injected here -->
+        <div id="tsCardsContainer"><div class="ts-loading"><div class="mini-loader"></div> Finding transport options...</div></div>
+
+        <!-- Local transport -->
+        <div id="tsLocalWrap" style="display:none;">
+            <div class="ts-section-label">🛺 Local Transport <div class="ts-section-line"></div></div>
+            <div class="ts-local-box" id="tsLocalBox"></div>
+        </div>
+
+        <button class="ts-proceed-btn" id="tsProceedBtn" onclick="proceedWithTransport()">✨ Proceed with this transport →</button>
+    </div>
+</div>
+
+<!-- BUDGET WARNING PAGE -->
+<div id="budgetWarnPage" class="page budget-warn-page">
+    <div class="budget-warn-card">
+        <div class="budget-warn-icon">⚠️</div>
+        <div class="budget-warn-title">Budget Not Sufficient</div>
+        <div class="budget-warn-msg" id="bwMsg"></div>
+        <div class="budget-warn-breakdown" id="bwBreakdown"></div>
+        <div class="budget-warn-actions">
+            <button class="btn-warn-back" onclick="showPage('transportSelectPage')">← Choose Cheaper Transport</button>
+            <button class="btn-warn-back" onclick="showPage('planPage')">✏️ Change Budget</button>
+            <button class="btn-warn-proceed" onclick="proceedAnyway()">Proceed Anyway →</button>
+        </div>
+    </div>
+</div>
+
+<!-- RESULT PAGE -->
+<div id="resultPage" class="page">
+    <div class="result-banner">
+        <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=900&q=80" alt="Travel">
+        <div class="result-banner-overlay">✈ Your AI Trip Plan is Ready!</div>
+    </div>
+    <div class="result-card">
+        <h2>Your Travel Plan</h2>
+        <div class="result-row"><span class="label">From</span><span class="value" id="resSource"></span></div>
+        <div class="result-row"><span class="label">Destination</span><span class="value" id="resDestination"></span></div>
+        <div class="result-row"><span class="label">Duration</span><span class="value"><span id="resDays"></span> Days</span></div>
+        <div class="result-row"><span class="label">Persons</span><span class="value" id="resPersons"></span></div>
+        <div class="result-row"><span class="label">Budget</span><span class="value">₹<span id="resBudget"></span></span></div>
+        <div class="result-row"><span class="label">Style</span><span class="value" id="resStyle"></span></div>
+        <div class="result-row"><span class="label">Stay</span><span class="value" id="resStay"></span></div>
+    </div>
+
+    <!-- TRIP SUMMARY CARD -->
+    <div class="trip-summary-wrap">
+        <div class="trip-summary-card" id="tripSummaryCard">
+            <div class="trip-summary-header">
+                <span class="ts-icon">🗒️</span>
+                <h3>Trip Summary</h3>
+                <span class="ai-badge" style="margin:0 0 0 auto;padding:4px 10px;font-size:11px;"><span class="ai-dot"></span> AI Generated</span>
+            </div>
+            <div id="tripSummaryBody">
+                <div class="ts-loading"><div class="mini-loader"></div> Building your trip summary...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="result-card" style="padding-top:0;background:transparent;border:none;box-shadow:none;padding:0;width:100%;max-width:700px;">
+        <div class="result-tabs" style="margin-top:0;">
+            <button class="result-tab-btn active" id="tab-itinerary" onclick="switchAiTab('itinerary')">
+                <span class="tab-icon">📅</span>Day Plan
+            </button>
+            <button class="result-tab-btn" id="tab-hotels" onclick="switchAiTab('hotels')">
+                <span class="tab-icon">🏨</span>Stay
+            </button>
+            <button class="result-tab-btn" id="tab-transport" onclick="switchAiTab('transport')">
+                <span class="tab-icon">🚗</span>Transport
+            </button>
+            <button class="result-tab-btn" id="tab-food" onclick="switchAiTab('food')">
+                <span class="tab-icon">🍽️</span>Food
+            </button>
+            <button class="result-tab-btn" id="tab-budget" onclick="switchAiTab('budget')">
+                <span class="tab-icon">💰</span>Budget
+            </button>
+        </div>
+        <div style="background:rgba(255,255,255,0.07);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.15);border-radius:20px;padding:24px;margin-top:12px;">
+            <div class="result-section open" id="section-itinerary"><div class="tab-loading"><div class="mini-loader"></div> Generating itinerary...</div></div>
+            <div class="result-section" id="section-hotels"></div>
+            <div class="result-section" id="section-transport"></div>
+            <div class="result-section" id="section-food"></div>
+            <div class="result-section" id="section-budget"></div>
+        </div>
+    </div>
+    <button class="btn-back" onclick="goToDashboard()">← Back to Dashboard</button>
+</div>
+
+<button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Dark/Light">&#127769;</button>
+<div class="toast" id="toast"></div>
+<div class="fab-group" id="fabGroup">
+    <div class="fab-row"><span class="fab-label">AI Chat</span><button class="fab fab-chat" onclick="openModal('chatModal')">&#128172;</button></div>
+    <div class="fab-row"><span class="fab-label">Weather</span><button class="fab fab-weather" onclick="openModal('weatherModal')">&#9925;</button></div>
+    <div class="fab-row"><span class="fab-label">Expenses</span><button class="fab fab-expense" onclick="openModal('expenseModal')">&#128176;</button></div>
+    <div class="fab-row"><span class="fab-label">More</span><button class="fab fab-tools" onclick="openModal('toolsModal')">&#129520;</button></div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="chatModal">
+<div class="modal-box">
+<div class="modal-header"><div class="modal-title">&#128172; Chat with AI</div><button class="modal-close" onclick="closeModal('chatModal')">&#10005;</button></div>
+<div class="chat-suggestions">
+    <span class="chat-sug" onclick="chatSuggest(this)">Best time to visit?</span>
+    <span class="chat-sug" onclick="chatSuggest(this)">What to wear?</span>
+    <span class="chat-sug" onclick="chatSuggest(this)">Safety tips?</span>
+    <span class="chat-sug" onclick="chatSuggest(this)">Must try food?</span>
+    <span class="chat-sug" onclick="chatSuggest(this)">Hidden gems?</span>
+</div>
+<div class="chat-messages" id="chatMessages"><div class="chat-msg ai">Hi! I am your AI travel assistant. Ask me anything!</div></div>
+<div class="chat-input-row">
+    <input class="chat-input" id="chatInput" placeholder="Ask anything about your trip..." onkeydown="if(event.key==='Enter')sendChat()">
+    <button class="chat-send" onclick="sendChat()">&#10148;</button>
+</div>
+</div></div>
+
+<div class="modal-overlay" id="weatherModal">
+<div class="modal-box">
+<div class="modal-header"><div class="modal-title">&#9925; Weather</div><button class="modal-close" onclick="closeModal('weatherModal')">&#10005;</button></div>
+<div class="weather-input-row">
+    <input class="weather-input" id="weatherCityInput" placeholder="Enter city...">
+    <button class="weather-btn" onclick="fetchWeatherAI()">Get Weather</button>
+</div>
+<div id="weatherResult"><div style="color:#7ab8d4;text-align:center;padding:20px;font-size:13px;">Enter a city to get weather info</div></div>
+</div></div>
+
+<div class="modal-overlay" id="expenseModal">
+<div class="modal-box">
+<div class="modal-header"><div class="modal-title">&#128176; Expense Tracker</div><button class="modal-close" onclick="closeModal('expenseModal')">&#10005;</button></div>
+<div class="expense-summary">
+    <div class="expense-sum-card"><div class="expense-sum-label">Spent</div><div class="expense-sum-val red" id="expTotal">&#8377;0</div></div>
+    <div class="expense-sum-card"><div class="expense-sum-label">Left</div><div class="expense-sum-val green" id="expLeft">&#8377;0</div></div>
+    <div class="expense-sum-card"><div class="expense-sum-label">Items</div><div class="expense-sum-val white" id="expCount">0</div></div>
+</div>
+<div class="expense-add-form">
+    <input class="expense-input" id="expName" placeholder="Expense name">
+    <input class="expense-input" id="expAmount" type="number" placeholder="Amount">
+    <select class="expense-select" id="expCategory">
+        <option>Food</option><option>Transport</option><option>Hotel</option>
+        <option>Activities</option><option>Shopping</option><option>Medical</option><option>Other</option>
+    </select>
+    <input class="expense-input" id="expPerson" placeholder="Paid by">
+    <button class="expense-add-btn" onclick="addExpense()">+ Add</button>
+</div>
+<div class="expense-list" id="expenseList"></div>
+<div class="split-section" id="splitSection" style="display:none;"><div class="split-title">Split Summary</div><div id="splitSummary"></div></div>
+</div></div>
+
+<div class="modal-overlay" id="toolsModal">
+<div class="modal-box">
+<div class="modal-header"><div class="modal-title">&#129520; More Tools</div><button class="modal-close" onclick="closeModal('toolsModal')">&#10005;</button></div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+    <button onclick="closeModal('toolsModal');openModal('packModal')" style="padding:16px;background:rgba(0,151,214,0.1);border:1px solid rgba(86,194,245,0.25);border-radius:14px;color:#56c2f5;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Packing List</button>
+    <button onclick="closeModal('toolsModal');openModal('currencyModal')" style="padding:16px;background:rgba(0,196,167,0.1);border:1px solid rgba(0,196,167,0.25);border-radius:14px;color:#00c4a7;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Currency</button>
+    <button onclick="closeModal('toolsModal');openModal('phraseModal')" style="padding:16px;background:rgba(155,93,229,0.1);border:1px solid rgba(155,93,229,0.25);border-radius:14px;color:#b87fff;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Phrases</button>
+    <button onclick="closeModal('toolsModal');openModal('mapsModal')" style="padding:16px;background:rgba(244,162,97,0.1);border:1px solid rgba(244,162,97,0.25);border-radius:14px;color:#f4a261;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Maps</button>
+    <button onclick="closeModal('toolsModal');openModal('saveModal')" style="padding:16px;background:rgba(40,167,69,0.1);border:1px solid rgba(40,167,69,0.25);border-radius:14px;color:#40c070;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Save Trip</button>
+    <button onclick="closeModal('toolsModal');printTripPlan()" style="padding:16px;background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.25);border-radius:14px;color:#ff6b6b;font-family:'Nunito',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">Print/PDF</button>
+</div>
+</div></div>
+
+<div class="modal-overlay" id="packModal">
+<div class="modal-box">
+<div class="modal-header"><div class="modal-title">Packing List</div><button class="modal-close" onclick="closeModal('packModal')">&#10005;</button></div>
+<div class="pack-categories" id="packCats"></div>
+<div class="pack-progress-text" id="packProgressText">0 of 0 packed</div>
+<div class="pack-progress"><div class="pack-progress-bar" id="packProgressBar" style="width:0%"></div></div>
+<div id="packItems"></div>
+<button onclick="generatePackingList()" style="width:100%;padding:11px;background:linear-gradient(135deg,#0097d6,#00c4a7);border:none;border-radius:10px;color:#fff;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;margin-top:10px;">AI Generate List</button>
+</div></div>
+
+<div class="modal-overlay" id="currencyModal">
+<div class="modal-box">
+<div class="modal-header"><div class="modal-title">Currency Converter</div><button class="modal-close" onclick="closeModal('currencyModal')">&#10005;</button></div>
+<div class="currency-grid">
+    <div class="currency-box">
+        <div class="currency-label">From</div>
+        <input class="currency-input" id="currFrom" type="number" value="1000" oninput="convertCurrency()">
+        <select class="currency-select" id="currFromCode" onchange="convertCurrency()">
+            <option value="INR">INR - Indian Rupee</option><option value="USD">USD - US Dollar</option>
+            <option value="EUR">EUR - Euro</option><option value="GBP">GBP - British Pound</option>
+            <option value="AED">AED - UAE Dirham</option><option value="SGD">SGD - Singapore Dollar</option>
+            <option value="JPY">JPY - Japanese Yen</option><option value="AUD">AUD - Australian Dollar</option>
+        </select>
+    </div>
+    <div class="currency-swap" onclick="swapCurrency()">&#8651;</div>
+    <div class="currency-box">
+        <div class="currency-label">To</div>
+        <div class="currency-amount" id="currResult">-</div>
+        <select class="currency-select" id="currToCode" onchange="convertCurrency()">
+            <option value="USD">USD - US Dollar</option><option value="INR">INR - Indian Rupee</option>
+            <option value="EUR">EUR - Euro</option><option value="GBP">GBP - British Pound</option>
+            <option value="AED">AED - UAE Dirham</option><option value="SGD">SGD - Singapore Dollar</option>
+            <option value="JPY">JPY - Japanese Yen</option><option value="AUD">AUD - Australian Dollar</option>
+        </select>
+    </div>
+</div>
+<div class="currency-rates" id="currencyRates"></div>
+<div style="color:#7ab8d4;font-size:11px;text-align:center;margin-top:10px;">Rates are approximate</div>
+</div></div>
+
+<div class="modal-overlay" id="phraseModal">
+<div class="modal-box">
+<div class="modal-header"><div class="modal-title">Local Phrases</div><button class="modal-close" onclick="closeModal('phraseModal')">&#10005;</button></div>
+<div id="phraseContent"><div class="tab-loading"><div class="mini-loader"></div> Loading phrases...</div></div>
+</div></div>
+
+<div class="modal-overlay" id="mapsModal">
+<div class="modal-box">
+<div class="modal-header"><div class="modal-title">Destination Map</div><button class="modal-close" onclick="closeModal('mapsModal')">&#10005;</button></div>
+<div id="mapFrame"></div>
+<div class="map-links" id="mapLinks"></div>
+</div></div>
+
+<div class="modal-overlay" id="saveModal">
+<div class="modal-box">
+<div class="modal-header"><div class="modal-title">Save and Share</div><button class="modal-close" onclick="closeModal('saveModal')">&#10005;</button></div>
+<button onclick="saveCurrentTrip()" style="width:100%;padding:12px;background:linear-gradient(135deg,#0097d6,#00c4a7);border:none;border-radius:10px;color:#fff;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;margin-bottom:14px;">Save Current Trip</button>
+<div style="color:#7ab8d4;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">Saved Trips</div>
+<div class="saved-trips-list" id="savedTripsList"></div>
+<div class="share-options" id="shareOptions" style="display:none;">
+    <button class="share-btn share-whatsapp" onclick="shareWhatsApp()">WhatsApp</button>
+    <button class="share-btn share-copy" onclick="shareCopy()">Copy</button>
+    <button class="share-btn share-email" onclick="shareEmail()">Email</button>
+    <button class="share-btn share-pdf" onclick="printTripPlan()">Print</button>
+</div>
+</div></div>
+
+<!-- ALL AVAILABLE TRAINS & LIVE IRCTC SEATS MODAL -->
+<div class="modal-overlay" id="allTrainsModal">
+<div class="modal-box" style="max-width:760px;width:95%;">
+    <div class="modal-header">
+        <div>
+            <div class="modal-title">🚆 All Available Trains &amp; Live IRCTC Seats</div>
+            <div style="font-size:12px;color:#56c2f5;margin-top:2px;" id="allTrainsModalRoute">Official Indian Railways Route Schedule</div>
+        </div>
+        <button class="modal-close" onclick="closeModal('allTrainsModal')">&#10005;</button>
+    </div>
+
+    <!-- Official IRCTC & Live Partner Connect Bar -->
+    <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;">
+        <a id="irctcOfficialLink" href="https://www.irctc.co.in/nget/train-search" target="_blank" style="flex:1;min-width:200px;padding:12px 16px;background:linear-gradient(135deg, rgba(230,57,70,0.2), rgba(230,57,70,0.1));border:1.5px solid #e63946;border-radius:12px;color:#ff8a8a;text-decoration:none;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;">
+            🎫 Book on Official IRCTC Portal ↗
+        </a>
+        <a id="confirmTktLink" href="https://www.confirmtkt.com/train-running-status" target="_blank" style="flex:1;min-width:200px;padding:12px 16px;background:linear-gradient(135deg, rgba(0,196,167,0.2), rgba(0,151,214,0.2));border:1.5px solid #00c4a7;border-radius:12px;color:#00c4a7;text-decoration:none;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;">
+            ⚡ Live Seats &amp; Tatkal on ConfirmTkt ↗
+        </a>
+    </div>
+
+    <!-- Live Search Input for Trains -->
+    <div style="margin-bottom:14px;">
+        <input type="text" id="trainSearchFilterInput" oninput="filterAllTrainsSearch(this.value)" placeholder="🔍 Search any train by number or name (e.g., 12737, Goutami, Godavari, Vande Bharat)..." style="width:100%;padding:11px 16px;background:rgba(255,255,255,0.07);border:1.5px solid rgba(86,194,245,0.3);border-radius:12px;color:#fff;font-size:13px;box-sizing:border-box;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor='#00c4a7'" onblur="this.style.borderColor='rgba(86,194,245,0.3)'">
+    </div>
+
+    <!-- Class Filter Pills -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px;">
+        <button class="pack-cat-btn active" id="trainClassFilterALL" onclick="filterAllTrainsClass('ALL')">All Classes</button>
+        <button class="pack-cat-btn" id="trainClassFilterSL" onclick="filterAllTrainsClass('SL')">Sleeper (SL)</button>
+        <button class="pack-cat-btn" id="trainClassFilter3A" onclick="filterAllTrainsClass('3A')">3-Tier AC (3A)</button>
+        <button class="pack-cat-btn" id="trainClassFilter2A" onclick="filterAllTrainsClass('2A')">2-Tier AC (2A)</button>
+        <button class="pack-cat-btn" id="trainClassFilterCC" onclick="filterAllTrainsClass('CC')">Chair Car (CC)</button>
+        <button class="pack-cat-btn" id="trainClassFilter2S" onclick="filterAllTrainsClass('2S')">2nd Seating (2S)</button>
+        <button class="pack-cat-btn" id="trainClassFilter1A" onclick="filterAllTrainsClass('1A')">First AC (1A)</button>
+    </div>
+
+    <div id="allTrainsListContainer" style="max-height:460px;overflow-y:auto;">
+        <div class="ts-loading"><div class="mini-loader"></div> Loading all trains on route...</div>
+    </div>
+</div>
+</div>
+
+<!-- OTP VERIFICATION MODAL -->
+<div class="modal-overlay" id="otpModal">
+<div class="modal-box" style="max-width:440px;text-align:center;">
+    <div class="modal-header" style="justify-content:center;position:relative;">
+        <div class="modal-title" style="font-size:22px;">🔐 Verify Your Account</div>
+        <button class="modal-close" onclick="closeModal('otpModal')" style="position:absolute;right:0;">&#10005;</button>
+    </div>
+    <p style="color:#a8d8ea;font-size:13px;margin:12px 0 6px;line-height:1.5;">
+        A 6-digit verification code has been dispatched directly to your email:
+    </p>
+    <div id="otpTargetEmail" style="color:#00c4a7;font-weight:700;font-size:15px;margin-bottom:12px;">user@example.com</div>
+
+    <!-- Email Delivery Status Badge -->
+    <div id="emailDeliveryStatus" style="display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(0,196,167,0.1);border:1px solid rgba(0,196,167,0.3);border-radius:12px;padding:8px 14px;color:#a8d8ea;font-size:12px;margin-bottom:16px;">
+        <span>📬 Check your email inbox / spam folder for the code</span>
+        <a id="emailPreviewLink" href="#" target="_blank" style="display:none;color:#56c2f5;font-weight:700;text-decoration:underline;margin-left:4px;">View Live Email ↗</a>
+    </div>
+
+    <!-- 6-digit Input -->
+    <div class="otp-input-container">
+        <input type="text" maxlength="1" class="otp-digit" id="otp-0" oninput="handleOtpInput(0, event)" onkeydown="handleOtpKey(0, event)">
+        <input type="text" maxlength="1" class="otp-digit" id="otp-1" oninput="handleOtpInput(1, event)" onkeydown="handleOtpKey(1, event)">
+        <input type="text" maxlength="1" class="otp-digit" id="otp-2" oninput="handleOtpInput(2, event)" onkeydown="handleOtpKey(2, event)">
+        <input type="text" maxlength="1" class="otp-digit" id="otp-3" oninput="handleOtpInput(3, event)" onkeydown="handleOtpKey(3, event)">
+        <input type="text" maxlength="1" class="otp-digit" id="otp-4" oninput="handleOtpInput(4, event)" onkeydown="handleOtpKey(4, event)">
+        <input type="text" maxlength="1" class="otp-digit" id="otp-5" oninput="handleOtpInput(5, event)" onkeydown="handleOtpKey(5, event)">
+    </div>
+
+    <p id="otpErrorMsg" class="error" style="margin-bottom:16px;min-height:18px;"></p>
+
+    <button class="btn-primary" id="verifyOtpBtn" onclick="submitOtpVerification()" style="margin-bottom:14px;">
+        ✓ Verify &amp; Activate Account
+    </button>
+
+    <div style="font-size:12px;color:#7ab8d4;display:flex;align-items:center;justify-content:center;gap:6px;">
+        <span>Didn't get the code?</span>
+        <button id="resendOtpBtn" onclick="resendOtpCode()" style="background:none;border:none;color:#56c2f5;font-weight:700;cursor:pointer;text-decoration:underline;font-family:'Nunito',sans-serif;">
+            Resend OTP
+        </button>
+    </div>
+</div>
+</div>
+
+<script>
+// ============ BACKEND API CONFIG ============
+const API_BASE = window.location.origin.includes('http') ? window.location.origin + '/api' : 'http://localhost:5000/api';
+let authToken = localStorage.getItem('st_token') || '';
+let currentUser = JSON.parse(localStorage.getItem('st_user') || 'null');
+let isBackendConnected = false;
+
+// Check backend health
+async function checkBackendHealth() {
+    try {
+        const resp = await fetch(`${API_BASE}/health`, { method: 'GET' });
+        if (resp.ok) {
+            const data = await resp.json();
+            isBackendConnected = true;
+            document.getElementById('statusDot').className = 'status-dot';
+            document.getElementById('statusText').innerText = 'Connected: ' + (data.database === 'Connected' ? 'MongoDB' : 'Express (Standalone)');
+            return true;
+        }
+    } catch(e) {
+        // Backend not responding on API_BASE
+    }
+    isBackendConnected = false;
+    document.getElementById('statusDot').className = 'status-dot offline';
+    document.getElementById('statusText').innerText = 'Backend Offline (Local Fallback)';
+    return false;
+}
+
+// Fallback Groq direct helper if backend is not started (configured via backend .env)
+var GROQ_API_KEY = '';
+var GROQ_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'llama3-70b-8192'];
+
+async function callDirectGroq(promptText, jsonMode) {
+    for (var i = 0; i < GROQ_MODELS.length; i++) {
+        try {
+            var body = {
+                model: GROQ_MODELS[i],
+                messages: [{ role: 'user', content: promptText }],
+                temperature: jsonMode ? 0.1 : 0.7,
+                max_tokens: 2000
+            };
+            if (jsonMode) body.response_format = { type: 'json_object' };
+
+            var resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + GROQ_API_KEY
+                },
+                body: JSON.stringify(body)
+            });
+            var data = await resp.json();
+            if (resp.ok && data.choices && data.choices[0]) {
+                return data.choices[0].message.content;
+            }
+        } catch(e) {}
+    }
+    throw new Error('Groq direct fallback failed');
+}
+
+// Platform comparison multipliers
+const platformData = [
+    { name: "SmartTour (Ours)", color: "#00c4a7", hotelMult: 1.00, transportMult: 1.00, isOurs: true },
+    { name: "MakeMyTrip",       color: "#e63946", hotelMult: 1.18, transportMult: 1.12, isOurs: false },
+    { name: "Goibibo",          color: "#f4a261", hotelMult: 1.14, transportMult: 1.09, isOurs: false },
+    { name: "Yatra",            color: "#457b9d", hotelMult: 1.22, transportMult: 1.15, isOurs: false },
+    { name: "Cleartrip",        color: "#a8dadc", hotelMult: 1.10, transportMult: 1.08, isOurs: false },
+    { name: "EaseMyTrip",       color: "#9b5de5", hotelMult: 1.16, transportMult: 1.11, isOurs: false },
+];
+
+// Fallback seed destinations in case backend is offline
+let destinationData = {
+    agra: {
+        name: "Agra",
+        subtitle: "Home of the Taj Mahal — a timeless wonder",
+        image: "https://images.unsplash.com/photo-1564507592333-c60657eea523?w=1200&q=80",
+        places: [
+            { name: "Taj Mahal", type: "UNESCO Heritage", entry: 50, desc: "One of the Seven Wonders of the World" },
+            { name: "Agra Fort", type: "Historical", entry: 40, desc: "Massive Mughal-era fort with stunning views" },
+            { name: "Fatehpur Sikri", type: "Heritage Site", entry: 35, desc: "Abandoned Mughal capital city" },
+            { name: "Mehtab Bagh", type: "Garden", entry: 25, desc: "Perfect sunset view of Taj Mahal" },
+            { name: "Itimad-ud-Daulah", type: "Monument", entry: 20, desc: "Baby Taj — a marble masterpiece" },
+        ],
+        hotels: {
+            5000:  [{ name: "Hotel Sheela", price: 600, rating: "⭐⭐⭐", amenities: "Free WiFi · AC · Breakfast" }, { name: "Zostel Agra", price: 400, rating: "⭐⭐⭐", amenities: "Hostel · WiFi · Lockers" }],
+            10000: [{ name: "Hotel Amar", price: 1200, rating: "⭐⭐⭐", amenities: "Pool · WiFi · Restaurant" }, { name: "Treebo Taj View", price: 1500, rating: "⭐⭐⭐⭐", amenities: "AC · WiFi · Breakfast" }],
+            20000: [{ name: "Coral Court Hotel", price: 2500, rating: "⭐⭐⭐⭐", amenities: "Spa · Pool · Restaurant" }, { name: "Hotel Clarks Shiraz", price: 3500, rating: "⭐⭐⭐⭐", amenities: "Rooftop · Pool · WiFi" }],
+            50000: [{ name: "The Oberoi Amarvilas", price: 18000, rating: "⭐⭐⭐⭐⭐", amenities: "Taj View · Spa · Fine Dining" }, { name: "ITC Mughal Resort", price: 12000, rating: "⭐⭐⭐⭐⭐", amenities: "Heritage · Pool · Spa" }],
+        },
+        transport: {
+            5000:  [{ mode: "🚌", name: "State Bus", route: "Delhi → Agra", price: 250, duration: "4-5 hrs" }, { mode: "🚆", name: "Express Train", route: "Mathura → Agra", price: 150, duration: "1 hr" }],
+            10000: [{ mode: "🚆", name: "Gatimaan Express", route: "Delhi → Agra", price: 750, duration: "1.5 hrs" }, { mode: "🚌", name: "AC Volvo Bus", route: "Delhi → Agra", price: 600, duration: "3.5 hrs" }],
+            20000: [{ mode: "🚆", name: "Shatabdi Express", route: "Delhi → Agra", price: 1200, duration: "2 hrs" }, { mode: "🚗", name: "Cab (One Way)", route: "Delhi → Agra", price: 2500, duration: "3 hrs" }],
+            50000: [{ mode: "✈️", name: "Flight + Cab", route: "Any City → Agra", price: 5000, duration: "2-4 hrs" }, { mode: "🚗", name: "Luxury Cab", route: "Delhi → Agra", price: 4500, duration: "3 hrs" }],
+        }
+    },
+    mumbai: {
+        name: "Mumbai",
+        subtitle: "The city that never sleeps — India's financial capital",
+        image: "https://images.unsplash.com/photo-1587474260584-136574528ed5?w=1200&q=80",
+        places: [
+            { name: "Gateway of India", type: "Landmark", entry: 0, desc: "Iconic arch monument on the seafront" },
+            { name: "Marine Drive", type: "Promenade", entry: 0, desc: "Queen's Necklace — beautiful coastal road" },
+            { name: "Elephanta Caves", type: "UNESCO Heritage", entry: 40, desc: "Ancient rock-cut cave temples" },
+            { name: "Juhu Beach", type: "Beach", entry: 0, desc: "Famous beach with street food" },
+            { name: "Chhatrapati Shivaji Museum", type: "Museum", entry: 85, desc: "Premier museum of art & history" },
+        ],
+        hotels: {
+            5000:  [{ name: "Hotel Decent", price: 800, rating: "⭐⭐⭐", amenities: "WiFi · AC · Central Location" }, { name: "Backpacker Panda", price: 500, rating: "⭐⭐⭐", amenities: "Hostel · WiFi · Lockers" }],
+            10000: [{ name: "Hotel Fariyas", price: 2000, rating: "⭐⭐⭐⭐", amenities: "Pool · WiFi · Restaurant" }, { name: "Ibis Mumbai Airport", price: 2500, rating: "⭐⭐⭐⭐", amenities: "AC · WiFi · Gym" }],
+            20000: [{ name: "The Lalit Mumbai", price: 5000, rating: "⭐⭐⭐⭐", amenities: "Spa · Pool · Restaurant" }, { name: "JW Marriott", price: 7000, rating: "⭐⭐⭐⭐⭐", amenities: "Sea View · Pool · Fine Dining" }],
+            50000: [{ name: "The Taj Mahal Palace", price: 20000, rating: "⭐⭐⭐⭐⭐", amenities: "Heritage · Sea View · Butler" }, { name: "Oberoi Mumbai", price: 18000, rating: "⭐⭐⭐⭐⭐", amenities: "Pool · Spa · Fine Dining" }],
+        },
+        transport: {
+            5000:  [{ mode: "🚆", name: "Local Train", route: "Within Mumbai", price: 20, duration: "Varies" }, { mode: "🚌", name: "BEST Bus", route: "City Bus", price: 15, duration: "Varies" }],
+            10000: [{ mode: "✈️", name: "Flight", route: "Delhi → Mumbai", price: 3500, duration: "2 hrs" }, { mode: "🚆", name: "Rajdhani Express", route: "Delhi → Mumbai", price: 1200, duration: "16 hrs" }],
+            20000: [{ mode: "✈️", name: "Flight (Direct)", route: "Any Metro → Mumbai", price: 4500, duration: "2-3 hrs" }, { mode: "🚗", name: "Cab Rental", route: "Airport → Hotel", price: 800, duration: "30-60 min" }],
+            50000: [{ mode: "✈️", name: "Business Class", route: "Any City → Mumbai", price: 12000, duration: "2-3 hrs" }, { mode: "🚗", name: "Luxury Cab", route: "Airport → Hotel", price: 2000, duration: "30-45 min" }],
+        }
+    },
+    goa: {
+        name: "Goa",
+        subtitle: "Sun, sand & serenity — India's beach paradise",
+        image: "https://images.unsplash.com/photo-1530521954074-e64f6810b32d?w=1200&q=80",
+        places: [
+            { name: "Baga Beach", type: "Beach", entry: 0, desc: "Most popular beach with water sports" },
+            { name: "Calangute Beach", type: "Beach", entry: 0, desc: "Queen of Beaches — vibrant & lively" },
+            { name: "Dudhsagar Falls", type: "Waterfall", entry: 400, desc: "One of India's tallest waterfalls" },
+            { name: "Old Goa Churches", type: "Heritage", entry: 0, desc: "UNESCO listed Portuguese-era churches" },
+            { name: "Anjuna Flea Market", type: "Market", entry: 0, desc: "Famous Wednesday flea market" },
+        ],
+        hotels: {
+            5000:  [{ name: "Goa Backpackers", price: 500, rating: "⭐⭐⭐", amenities: "Hostel · WiFi · Beach Nearby" }, { name: "Villa Sol Beach Resort", price: 900, rating: "⭐⭐⭐", amenities: "AC · WiFi · Garden" }],
+            10000: [{ name: "Airlie Beach Hotel", price: 2000, rating: "⭐⭐⭐⭐", amenities: "Pool · WiFi · Restaurant" }, { name: "Hotel Baga Breeze", price: 1800, rating: "⭐⭐⭐⭐", amenities: "AC · WiFi · Beachside" }],
+            20000: [{ name: "Novotel Goa Resort", price: 5500, rating: "⭐⭐⭐⭐", amenities: "Pool · Spa · Beach Access" }, { name: "Alila Diwa Goa", price: 6000, rating: "⭐⭐⭐⭐⭐", amenities: "Infinity Pool · Spa · Dining" }],
+            50000: [{ name: "The Leela Goa", price: 15000, rating: "⭐⭐⭐⭐⭐", amenities: "Private Beach · Spa · Butler" }, { name: "Taj Exotica Goa", price: 18000, rating: "⭐⭐⭐⭐⭐", amenities: "Beach Villa · Pool · Fine Dining" }],
+        },
+        transport: {
+            5000:  [{ mode: "🛵", name: "Scooter Rental", route: "Within Goa", price: 300, duration: "Per Day" }, { mode: "🚌", name: "Local Bus", route: "Panaji ↔ Beaches", price: 30, duration: "Varies" }],
+            10000: [{ mode: "✈️", name: "Flight", route: "Mumbai → Goa", price: 2500, duration: "1 hr" }, { mode: "🚆", name: "Konkan Railway", route: "Mumbai → Goa", price: 800, duration: "8-10 hrs" }],
+            20000: [{ mode: "✈️", name: "Flight (Direct)", route: "Delhi → Goa", price: 5000, duration: "2.5 hrs" }, { mode: "🚗", name: "Cab Rental", route: "Full Day Sightseeing", price: 2500, duration: "8 hrs" }],
+            50000: [{ mode: "✈️", name: "Business Class", route: "Any City → Goa", price: 14000, duration: "1-3 hrs" }, { mode: "🚗", name: "Luxury Cab", route: "Airport Transfers", price: 2000, duration: "30 min" }],
+        }
+    },
+    kerala: {
+        name: "Kerala",
+        subtitle: "God's Own Country — backwaters, hills & culture",
+        image: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=1200&q=80",
+        places: [
+            { name: "Alleppey Backwaters", type: "Nature", entry: 0, desc: "Iconic houseboat rides through canals" },
+            { name: "Munnar Hills", type: "Hill Station", entry: 0, desc: "Tea plantations & misty mountains" },
+            { name: "Periyar Wildlife Sanctuary", type: "Wildlife", entry: 150, desc: "Tigers, elephants & boat safari" },
+            { name: "Kovalam Beach", type: "Beach", entry: 0, desc: "Crescent-shaped beach with lighthouse" },
+            { name: "Athirapally Falls", type: "Waterfall", entry: 30, desc: "Niagara of India — stunning cascade" },
+        ],
+        hotels: {
+            5000:  [{ name: "Kerala Homestay", price: 700, rating: "⭐⭐⭐", amenities: "Homemade Food · WiFi · AC" }, { name: "Zostel Kochi", price: 500, rating: "⭐⭐⭐", amenities: "Hostel · WiFi · Social" }],
+            10000: [{ name: "Lake Palace Resort", price: 2200, rating: "⭐⭐⭐⭐", amenities: "Lake View · WiFi · Restaurant" }, { name: "Spice Village Thekkady", price: 2500, rating: "⭐⭐⭐⭐", amenities: "Eco Resort · Pool · Nature" }],
+            20000: [{ name: "Kumarakom Lake Resort", price: 6000, rating: "⭐⭐⭐⭐⭐", amenities: "Villa · Pool · Ayurveda" }, { name: "The Zuri Kumarakom", price: 5500, rating: "⭐⭐⭐⭐", amenities: "Lake View · Spa · Pool" }],
+            50000: [{ name: "Niraamaya Retreats", price: 14000, rating: "⭐⭐⭐⭐⭐", amenities: "Private Villa · Ayurveda · Pool" }, { name: "CGH Earth Hotels", price: 12000, rating: "⭐⭐⭐⭐⭐", amenities: "Heritage · Eco · Spa" }],
+        },
+        transport: {
+            5000:  [{ mode: "🚌", name: "KSRTC Bus", route: "Kochi → Munnar", price: 200, duration: "4 hrs" }, { mode: "🚆", name: "Train", route: "Chennai → Kochi", price: 400, duration: "6-7 hrs" }],
+            10000: [{ mode: "✈️", name: "Flight", route: "Delhi → Kochi", price: 4000, duration: "2.5 hrs" }, { mode: "🚗", name: "Cab", route: "Kochi → Alleppey", price: 1200, duration: "1.5 hrs" }],
+            20000: [{ mode: "✈️", name: "Flight (Direct)", route: "Any Metro → Kochi", price: 5000, duration: "2-3 hrs" }, { mode: "⛵", name: "Houseboat", route: "Alleppey Backwaters", price: 5000, duration: "Full Day" }],
+            50000: [{ mode: "✈️", name: "Business Class", route: "Any City → Kochi", price: 15000, duration: "2-3 hrs" }, { mode: "⛵", name: "Luxury Houseboat", route: "Premium Backwater Tour", price: 12000, duration: "Overnight" }],
+        }
+    },
+    jaipur: {
+        name: "Jaipur",
+        subtitle: "The Pink City — royal palaces & vibrant bazaars",
+        image: "https://images.unsplash.com/photo-1477587458883-47145ed94245?w=1200&q=80",
+        places: [
+            { name: "Amber Fort", type: "Heritage", entry: 100, desc: "Majestic hilltop fort with stunning interiors" },
+            { name: "Hawa Mahal", type: "Landmark", entry: 50, desc: "Palace of Winds — iconic 5-storey façade" },
+            { name: "City Palace", type: "Royal Palace", entry: 200, desc: "Residence of the royal family of Jaipur" },
+            { name: "Jantar Mantar", type: "UNESCO Site", entry: 50, desc: "Ancient astronomical observatory" },
+            { name: "Nahargarh Fort", type: "Fort", entry: 50, desc: "Best sunset view point of Jaipur" },
+        ],
+        hotels: {
+            5000:  [{ name: "Hotel Pearl Palace", price: 700, rating: "⭐⭐⭐", amenities: "Rooftop · WiFi · AC" }, { name: "Zostel Jaipur", price: 450, rating: "⭐⭐⭐", amenities: "Hostel · WiFi · Central" }],
+            10000: [{ name: "Hotel Diggi Palace", price: 1800, rating: "⭐⭐⭐⭐", amenities: "Heritage · Garden · WiFi" }, { name: "Alsisar Haveli", price: 2200, rating: "⭐⭐⭐⭐", amenities: "Heritage · Pool · Restaurant" }],
+            20000: [{ name: "Samode Haveli", price: 5000, rating: "⭐⭐⭐⭐⭐", amenities: "Rooftop Pool · Heritage · Spa" }, { name: "Jai Mahal Palace", price: 6000, rating: "⭐⭐⭐⭐⭐", amenities: "Pool · Gardens · Fine Dining" }],
+            50000: [{ name: "Rambagh Palace", price: 22000, rating: "⭐⭐⭐⭐⭐", amenities: "Royal Suite · Spa · Pool" }, { name: "Taj Jai Mahal Palace", price: 18000, rating: "⭐⭐⭐⭐⭐", amenities: "Heritage · Butler · Pool" }],
+        },
+        transport: {
+            5000:  [{ mode: "🚌", name: "Volvo Bus", route: "Delhi → Jaipur", price: 400, duration: "5 hrs" }, { mode: "🚆", name: "Express Train", route: "Delhi → Jaipur", price: 300, duration: "4.5 hrs" }],
+            10000: [{ mode: "🚆", name: "Shatabdi Express", route: "Delhi → Jaipur", price: 850, duration: "4 hrs" }, { mode: "🚗", name: "Cab (Shared)", route: "Delhi → Jaipur", price: 1200, duration: "4.5 hrs" }],
+            20000: [{ mode: "✈️", name: "Flight", route: "Mumbai → Jaipur", price: 4000, duration: "1.5 hrs" }, { mode: "🚗", name: "Private Cab", route: "Delhi → Jaipur", price: 3000, duration: "4.5 hrs" }],
+            50000: [{ mode: "✈️", name: "Business Class", route: "Any City → Jaipur", price: 12000, duration: "1-3 hrs" }, { mode: "🐘", name: "Heritage Tour", route: "Amber Fort Elephant Ride", price: 1100, duration: "30 min" }],
+        }
+    }
+};
+
+let currentDest = null;
+let currentBudget = null;
+let currentPersons = 1;
+
+// Fetch destinations from backend if available
+async function loadDestinationsFromBackend() {
+    try {
+        const res = await fetch(`${API_BASE}/destinations`);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.data && data.data.length > 0) {
+                const newDestMap = {};
+                data.data.forEach(d => {
+                    newDestMap[d.key] = d;
+                });
+                destinationData = newDestMap;
+            }
+        }
+    } catch(e) {}
+    renderDashboardDestinations();
+}
+
+function renderDashboardDestinations() {
+    const container = document.getElementById('destCardsList');
+    if (!container) return;
+    const keys = Object.keys(destinationData);
+    container.innerHTML = keys.map(k => {
+        const d = destinationData[k];
+        return `<div class="dest-card" onclick="openDestination('${k}')">
+            <img src="${d.image}" alt="${d.name}">
+            <span class="dest-label">${d.name}</span>
+        </div>`;
+    }).join('');
+}
+
+// Show Page function
+function showPage(pageId) {
+    document.querySelectorAll(".page").forEach(p => p.style.display = "none");
+    const flexPages = ["loginPage", "planPage", "processingPage", "resultPage"];
+    document.getElementById(pageId).style.display = flexPages.includes(pageId) ? "flex" : "block";
+}
+
+// Global OTP state
+let pendingOtpEmail = '';
+
+// Top-right Profile Component Manager
+function updateProfileUI() {
+    const badge = document.getElementById('topProfileBadge');
+    if (!badge) return;
+
+    if (currentUser) {
+        badge.style.display = 'flex';
+        const name = currentUser.name || currentUser.email.split('@')[0];
+        document.getElementById('topProfileName').innerText = name;
+        document.getElementById('topProfileAvatar').innerText = name.charAt(0).toUpperCase();
+
+        const isVer = currentUser.isVerified !== false;
+        document.getElementById('topProfileVerified').style.display = isVer ? 'inline-flex' : 'none';
+        document.getElementById('topProfileTag').innerText = isVer ? '🛡️ IRCTC Verified' : 'Standard Member';
+
+        // Update dropdown details
+        document.getElementById('dropProfileName').innerText = name;
+        document.getElementById('dropProfileEmail').innerText = currentUser.email || '';
+        document.getElementById('dropProfileVerified').style.display = isVer ? 'inline-flex' : 'none';
+        document.getElementById('dropProfileStatus').innerHTML = isVer
+            ? '<span>🛡️ IRCTC &amp; Email Verified</span>'
+            : '<span style="color:#f4a261;background:rgba(244,162,97,0.15);border-color:rgba(244,162,97,0.35);">⚠️ Unverified Account</span>';
+    } else {
+        badge.style.display = 'none';
+        const dd = document.getElementById('profileDropdown');
+        if (dd) dd.style.display = 'none';
+    }
+}
+
+function toggleProfileDropdown(forceState) {
+    const dd = document.getElementById('profileDropdown');
+    if (!dd) return;
+    if (typeof forceState === 'boolean') {
+        dd.style.display = forceState ? 'flex' : 'none';
+    } else {
+        dd.style.display = dd.style.display === 'flex' ? 'none' : 'flex';
+    }
+}
+
+// Close dropdown when clicking outside
+window.addEventListener('click', function(e) {
+    const badge = document.getElementById('topProfileBadge');
+    const dd = document.getElementById('profileDropdown');
+    if (dd && dd.style.display === 'flex') {
+        if (!dd.contains(e.target) && (!badge || !badge.contains(e.target))) {
+            dd.style.display = 'none';
+        }
+    }
+});
+
+function handleLogout() {
+    authToken = '';
+    currentUser = null;
+    localStorage.removeItem('st_token');
+    localStorage.removeItem('st_user');
+    toggleProfileDropdown(false);
+    updateProfileUI();
+    document.getElementById('fabGroup').style.display = 'none';
+    showToast("You have been signed out.");
+    showPage("loginPage");
+}
+
+// Live Indian Railway station suggestions for autocomplete
+let stationDebounceTimer = null;
+async function fetchStationSuggestions(query, datalistId) {
+    if (!query || query.trim().length < 2) return;
+    clearTimeout(stationDebounceTimer);
+    stationDebounceTimer = setTimeout(async () => {
+        try {
+            const resp = await fetch('/api/trains/search-stations?q=' + encodeURIComponent(query.trim()));
+            const data = await resp.json();
+            if (data.success && Array.isArray(data.stations)) {
+                const dl = document.getElementById(datalistId);
+                if (dl) {
+                    dl.innerHTML = data.stations.map(st =>
+                        '<option value="' + st.name + '">' + st.code + ' - ' + st.name + (st.state ? ' (' + st.state + ')' : '') + '</option>'
+                    ).join('');
+                }
+            }
+        } catch (e) {
+            // ignore network glitch
+        }
+    }, 200);
+}
+async function validateLogin() {
+    let name = document.getElementById("loginName").value.trim();
+    let email = document.getElementById("email").value.trim();
+    let password = document.getElementById("password").value;
+    let errorMsg = document.getElementById("errorMsg");
+
+    if (!email) { errorMsg.innerText = "Please enter your email."; return; }
+    if (!email.includes("@")) { errorMsg.innerText = "Please enter a valid email address."; return; }
+    if (!password) { errorMsg.innerText = "Please enter your password."; return; }
+    errorMsg.innerText = "Authenticating...";
+
+    if (isBackendConnected) {
+        try {
+            // Attempt login
+            let resp = await fetch(`${API_BASE}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            let data = await resp.json();
+
+            // Check if OTP verification is required on login
+            if (data.requireOtp) {
+                errorMsg.innerText = "";
+                openOtpModal(data.email || email, data.emailPreviewUrl);
+                return;
+            }
+
+            // If user doesn't exist yet, automatically trigger registration which sends OTP
+            if (!resp.ok && data.message && (data.message.includes('Invalid') || data.message.includes('not found') || resp.status === 401)) {
+                const regResp = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, password })
+                });
+                data = await regResp.json();
+
+                if (data.requireOtp) {
+                    errorMsg.innerText = "";
+                    openOtpModal(data.email || email, data.emailPreviewUrl);
+                    return;
+                }
+            }
+
+            if (data.success && data.token) {
+                authToken = data.token;
+                currentUser = data.user;
+                localStorage.setItem('st_token', authToken);
+                localStorage.setItem('st_user', JSON.stringify(currentUser));
+                showToast(`Welcome, ${currentUser.name || 'Traveler'}!`);
+                errorMsg.innerText = "";
+                updateProfileUI();
+                showFabs();
+                showPage("dashboardPage");
+                return;
+            } else {
+                errorMsg.innerText = data.message || "Authentication failed.";
+                return;
+            }
+        } catch(e) {
+            console.warn('Backend auth failed, falling back to local session', e);
+        }
+    }
+
+    // Local fallback login (if offline)
+    errorMsg.innerText = "";
+    currentUser = { name: name || email.split('@')[0], email, isVerified: true };
+    localStorage.setItem('st_user', JSON.stringify(currentUser));
+    showToast("Signed in!");
+    updateProfileUI();
+    showFabs();
+    showPage("dashboardPage");
+}
+
+// ============ OTP FLOW FUNCTIONS ============
+function openOtpModal(email, previewUrl) {
+    pendingOtpEmail = email;
+    document.getElementById('otpTargetEmail').innerText = email;
+    document.getElementById('otpErrorMsg').innerText = '';
+
+    // Clear digit inputs
+    for (let i = 0; i < 6; i++) {
+        const inp = document.getElementById(`otp-${i}`);
+        if (inp) inp.value = '';
+    }
+
+    // Live preview link if running with Ethereal email testing
+    const previewLink = document.getElementById('emailPreviewLink');
+    if (previewUrl) {
+        previewLink.href = previewUrl;
+        previewLink.style.display = 'inline';
+    } else {
+        previewLink.style.display = 'none';
+    }
+
+    openModal('otpModal');
+    setTimeout(() => {
+        const first = document.getElementById('otp-0');
+        if (first) first.focus();
+    }, 200);
+}
+
+function handleOtpInput(index, event) {
+    const val = event.target.value;
+    if (val.length >= 1) {
+        event.target.value = val.slice(-1);
+        if (index < 5) {
+            const next = document.getElementById(`otp-${index + 1}`);
+            if (next) next.focus();
+        }
+    }
+}
+
+function handleOtpKey(index, event) {
+    if (event.key === 'Backspace' && !event.target.value && index > 0) {
+        const prev = document.getElementById(`otp-${index - 1}`);
+        if (prev) {
+            prev.focus();
+            prev.value = '';
+        }
+    } else if (event.key === 'Enter') {
+        submitOtpVerification();
+    }
+}
+
+async function submitOtpVerification() {
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+        const inp = document.getElementById(`otp-${i}`);
+        if (inp) code += inp.value.trim();
+    }
+
+    const err = document.getElementById('otpErrorMsg');
+    if (code.length !== 6) {
+        err.innerText = 'Please enter all 6 digits of the OTP code received in your email.';
+        return;
+    }
+
+    err.innerText = 'Verifying code...';
+    err.style.color = '#56c2f5';
+
+    try {
+        const resp = await fetch(`${API_BASE}/auth/verify-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: pendingOtpEmail, otp: code })
+        });
+        const data = await resp.json();
+
+        if (data.success && data.token) {
+            authToken = data.token;
+            currentUser = data.user;
+            localStorage.setItem('st_token', authToken);
+            localStorage.setItem('st_user', JSON.stringify(currentUser));
+
+            closeModal('otpModal');
+            showToast('🎉 Account Verified & Activated Successfully!');
+            updateProfileUI();
+            showFabs();
+            showPage('dashboardPage');
+        } else {
+            err.innerText = data.message || 'Invalid OTP code. Please check your email and try again.';
+            err.style.color = '#ff6b6b';
+        }
+    } catch(e) {
+        err.innerText = 'Verification failed: ' + e.message;
+        err.style.color = '#ff6b6b';
+    }
+}
+
+async function resendOtpCode() {
+    const err = document.getElementById('otpErrorMsg');
+    if (!pendingOtpEmail) return;
+
+    err.innerText = 'Sending new OTP code to your email...';
+    err.style.color = '#56c2f5';
+
+    try {
+        const resp = await fetch(`${API_BASE}/auth/resend-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: pendingOtpEmail })
+        });
+        const data = await resp.json();
+
+        if (data.success) {
+            const previewLink = document.getElementById('emailPreviewLink');
+            if (data.emailPreviewUrl) {
+                previewLink.href = data.emailPreviewUrl;
+                previewLink.style.display = 'inline';
+            }
+            err.innerText = '✓ Fresh 6-digit OTP has been sent to ' + pendingOtpEmail;
+            err.style.color = '#00c4a7';
+        } else {
+            err.innerText = data.message || 'Could not resend OTP.';
+            err.style.color = '#ff6b6b';
+        }
+    } catch(e) {
+        err.innerText = 'Error resending OTP: ' + e.message;
+        err.style.color = '#ff6b6b';
+    }
+}
+
+function openDestination(destKey) {
+    currentDest = destKey;
+    currentBudget = null;
+    const data = destinationData[destKey];
+    if (!data) return;
+
+    document.getElementById("detailTitle").innerText = data.name;
+    document.getElementById("detailSubtitle").innerText = data.subtitle;
+    document.getElementById("detailHero").style.backgroundImage = `url('${data.image}')`;
+    document.getElementById("placesContainer").innerHTML = '';
+    document.getElementById("hotelsContainer").innerHTML = '';
+    document.getElementById("transportContainer").innerHTML = '';
+    document.querySelectorAll(".budget-btn").forEach(b => b.classList.remove("active"));
+    currentPersons = 1;
+    document.getElementById("personCount").innerText = "1";
+    document.getElementById("totalCostBar").style.display = "none";
+    document.getElementById("compareSection").style.display = "none";
+    document.getElementById("customBudget").value = "";
+    showPage("destDetailPage");
+    renderPlaces(data.places || []);
+}
+
+function renderPlaces(places) {
+    const container = document.getElementById("placesContainer");
+    container.innerHTML = places.map(p => `
+        <div class="info-card">
+            <div class="card-name">${p.name}</div>
+            <div class="card-detail">${p.desc}</div>
+            <div class="card-badge">${p.type}</div>
+            <div class="card-price">${p.entry === 0 ? '✅ Free Entry' : '🎟 Entry: ₹' + p.entry}</div>
+        </div>
+    `).join('');
+}
+
+function changePerson(delta) {
+    currentPersons = Math.max(1, Math.min(20, currentPersons + delta));
+    document.getElementById("personCount").innerText = currentPersons;
+    document.getElementById("personCount").nextElementSibling.innerText = currentPersons === 1 ? "person" : "persons";
+    if (currentBudget) updateTotalCost();
+}
+
+function updateTotalCost() {
+    const data = destinationData[currentDest];
+    const hotels = (data.hotels && data.hotels[currentBudget]) || [];
+    const transport = (data.transport && data.transport[currentBudget]) || [];
+    const places = data.places || [];
+
+    const hotelPerRoom = hotels && hotels.length > 0 ? hotels[0].price : 0;
+    const roomsNeeded = Math.ceil(currentPersons / 2);
+    const hotelTotal = hotelPerRoom * roomsNeeded;
+
+    const transportPerPerson = transport && transport.length > 0 ? transport[0].price : 0;
+    const transportTotal = transportPerPerson * currentPersons;
+
+    const entryPerPerson = places.reduce((sum, p) => sum + (p.entry || 0), 0);
+    const entryTotal = entryPerPerson * currentPersons;
+
+    const grandTotal = hotelTotal + transportTotal + entryTotal;
+
+    let notes = [];
+    if (hotelTotal > 0) notes.push(`🏨 ${roomsNeeded} room${roomsNeeded > 1 ? 's' : ''} × ₹${hotelPerRoom.toLocaleString()} = ₹${hotelTotal.toLocaleString()}`);
+    if (transportTotal > 0) notes.push(`🚗 ${currentPersons} ticket${currentPersons > 1 ? 's' : ''} × ₹${transportPerPerson.toLocaleString()} = ₹${transportTotal.toLocaleString()}`);
+    if (entryTotal > 0) notes.push(`🎟 Entry × ${currentPersons} = ₹${entryTotal.toLocaleString()}`);
+
+    document.getElementById("totalCostBar").style.display = "flex";
+    document.getElementById("totalCostValue").innerText = "₹" + grandTotal.toLocaleString();
+    document.getElementById("totalCostNote").innerText = notes.join("   |   ");
+}
+
+function setPresetBudget(amount) {
+    document.getElementById("customBudget").value = amount;
+    document.querySelectorAll(".budget-btn").forEach(b => {
+        b.classList.toggle("active", parseInt(b.innerText.replace(/[₹,]/g, '')) === amount);
+    });
+    runComparison();
+}
+
+function runComparison() {
+    const inputVal = parseInt(document.getElementById("customBudget").value);
+    if (!inputVal || inputVal < 1000) {
+        alert("Please enter a valid budget (minimum ₹1,000)");
+        return;
+    }
+
+    const brackets = [5000, 10000, 20000, 50000];
+    const bracket = brackets.reduce((prev, curr) =>
+        Math.abs(curr - inputVal) < Math.abs(prev - inputVal) ? curr : prev
+    );
+
+    currentBudget = bracket;
+    const data = destinationData[currentDest];
+    renderHotels(data.hotels[bracket] || []);
+    renderTransport(data.transport[bracket] || []);
+    updateTotalCost();
+    renderComparison(inputVal, data, bracket);
+}
+
+function renderComparison(userBudget, data, bracket) {
+    const hotels = (data.hotels && data.hotels[bracket]) || [];
+    const transport = (data.transport && data.transport[bracket]) || [];
+
+    const baseHotel = hotels && hotels.length > 0 ? hotels[0].price : 0;
+    const baseTransport = transport && transport.length > 0 ? transport[0].price : 0;
+    const roomsNeeded = Math.ceil(currentPersons / 2);
+
+    const rows = platformData.map(p => {
+        const pHotel = Math.round(baseHotel * p.hotelMult);
+        const pTransport = Math.round(baseTransport * p.transportMult);
+        const pTotal = (pHotel * roomsNeeded) + (pTransport * currentPersons);
+        return { ...p, pHotel, pTransport, pTotal };
+    }).sort((a, b) => a.pTotal - b.pTotal);
+
+    const minTotal = rows[0].pTotal;
+    const maxTotal = rows[rows.length - 1].pTotal;
+
+    const tbody = document.getElementById("compareBody");
+    tbody.innerHTML = rows.map(r => {
+        const isBest = r.pTotal === minTotal;
+        const isWorst = r.pTotal === maxTotal && !r.isOurs;
+        const verdict = isBest
+            ? `<span class="badge-best">✅ BEST DEAL</span>`
+            : isWorst
+            ? `<span class="badge-high">⚠ Expensive</span>`
+            : `<span style="color:#7ab8d4; font-size:12px;">Average</span>`;
+
+        const withinBudget = r.pTotal <= userBudget
+            ? `<span style="color:#00c4a7; font-size:11px;">✔ Within Budget</span>`
+            : `<span style="color:#ff6b6b; font-size:11px;">✘ Over Budget by ₹${(r.pTotal - userBudget).toLocaleString()}</span>`;
+
+        return `<tr class="${r.isOurs ? 'our-row' : ''}">
+            <td>
+                <div class="platform-logo">
+                    <div class="platform-dot" style="background:${r.color}"></div>
+                    <div>
+                        <div class="platform-name" style="color:${r.isOurs ? '#00c4a7' : '#fff'}">${r.name}</div>
+                        <div>${withinBudget}</div>
+                    </div>
+                </div>
+            </td>
+            <td style="color:#a8d8ea;">₹${r.pHotel.toLocaleString()}/night</td>
+            <td style="color:#a8d8ea;">₹${r.pTransport.toLocaleString()}/person</td>
+            <td class="price-cell" style="color:${r.isOurs ? '#00c4a7' : '#fff'}">₹${r.pTotal.toLocaleString()}</td>
+            <td>${verdict}</td>
+        </tr>`;
+    }).join('');
+
+    const ourTotal = rows.find(r => r.isOurs).pTotal;
+    const mostExpensive = maxTotal;
+    const savings = mostExpensive - ourTotal;
+    const savingsPct = Math.round((savings / mostExpensive) * 100);
+
+    document.getElementById("savingsText").innerText =
+        `You save ₹${savings.toLocaleString()} (${savingsPct}%) by booking with SmartTour vs the most expensive platform!`;
+    document.getElementById("savingsSub").innerText =
+        `Based on ${currentPersons} traveller${currentPersons > 1 ? 's' : ''}, ${roomsNeeded} room${roomsNeeded > 1 ? 's' : ''}, budget ₹${userBudget.toLocaleString()}`;
+
+    document.getElementById("compareSection").style.display = "block";
+    document.getElementById("compareSection").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function renderHotels(hotels) {
+    const container = document.getElementById("hotelsContainer");
+    if (!hotels || hotels.length === 0) {
+        container.innerHTML = '<div class="no-data">No hotels available for this budget.</div>';
+        return;
+    }
+    container.innerHTML = hotels.map(h => `
+        <div class="info-card">
+            <div class="card-name">${h.name}</div>
+            <div class="card-detail">${h.rating}</div>
+            <div class="card-detail">🛎 ${h.amenities}</div>
+            <div class="card-price">₹${h.price.toLocaleString()} / night</div>
+        </div>
+    `).join('');
+}
+
+function renderTransport(options) {
+    const container = document.getElementById("transportContainer");
+    if (!options || options.length === 0) {
+        container.innerHTML = '<div class="no-data">No transport options available.</div>';
+        return;
+    }
+    container.innerHTML = options.map(t => `
+        <div class="transport-card">
+            <div class="transport-icon">${t.mode}</div>
+            <div class="transport-info">
+                <div class="t-name">${t.name}</div>
+                <div class="t-detail">📍 ${t.route}</div>
+                <div class="t-detail">⏱ ${t.duration}</div>
+                <div class="t-price">₹${t.price.toLocaleString()}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function goToPlan() { showPage("planPage"); }
+function goToDashboard() { showPage("dashboardPage"); }
+
+// Plan form helpers
+var planPersons = 1;
+var planStay = 'hotel';
+var aiTripData = {};
+var _tsOptions = null;
+var _tsPicked = null;
+var _tripFormData = {};
+
+function selectStay(type) {
+    planStay = type;
+    document.getElementById('stayHotel').classList.toggle('selected', type === 'hotel');
+    document.getElementById('stayRelative').classList.toggle('selected', type === 'relative');
+}
+
+function changePlanPersons(delta) {
+    planPersons = Math.max(1, Math.min(20, planPersons + delta));
+    document.getElementById("planPersonsCount").innerText = planPersons;
+    document.getElementById("planPersonsLabel").innerText = planPersons === 1 ? "person" : "persons";
+    updatePerPersonHint();
+}
+
+function updatePerPersonHint() {
+    var b = parseInt(document.getElementById("budget").value);
+    var hint = document.getElementById("perPersonHint");
+    hint.innerText = (b && b > 0)
+        ? "Budget per person: ₹" + Math.round(b / planPersons).toLocaleString()
+        : "Budget per person: —";
+}
+
+// AI status cycle
+var _statusMessages = [
+    "⚡ AI is thinking...", "🗺️ Mapping out your route...",
+    "🏨 Finding best stays...", "🚗 Checking transport options...",
+    "🍽️ Curating local food spots...", "💰 Calculating budget breakdown...",
+    "📅 Building day-by-day itinerary...", "✨ Almost ready..."
+];
+var _statusIdx = 0, _statusInt = null;
+function startStatusCycle() {
+    _statusIdx = 0;
+    document.getElementById('aiStatusText').innerText = _statusMessages[0];
+    _statusInt = setInterval(function() {
+        _statusIdx = (_statusIdx + 1) % _statusMessages.length;
+        document.getElementById('aiStatusText').innerText = _statusMessages[_statusIdx];
+    }, 2000);
+}
+function stopStatusCycle() { if (_statusInt) clearInterval(_statusInt); }
+
+// Process Trip & Transport Selection
+async function processTrip() {
+    var source = document.getElementById("sourceCity").value.trim();
+    var dest   = document.getElementById("destination").value.trim();
+    var days   = document.getElementById("days").value;
+    var budget = document.getElementById("budget").value;
+    var style  = document.getElementById("travelStyle").value;
+    var err    = document.getElementById("planError");
+
+    if (!source) { err.innerText = "Please enter your source city."; return; }
+    if (!dest)   { err.innerText = "Please enter your destination."; return; }
+    if (!days)   { err.innerText = "Please enter number of days."; return; }
+    if (!budget) { err.innerText = "Please enter your budget."; return; }
+    err.innerText = "";
+
+    _tripFormData = { source, dest, days, budget: parseInt(budget), style, persons: planPersons, stay: planStay };
+    _tsPicked = null;
+
+    showPage("processingPage");
+    document.getElementById("procStatus").innerText   = "Finding transport options for your route...";
+    document.getElementById("aiStatusText").innerText = "🚆 Checking trains, buses & flights...";
+
+    try {
+        let tr;
+        if (isBackendConnected) {
+            const resp = await fetch(`${API_BASE}/ai/transport`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ source, dest, persons: planPersons, budget: parseInt(budget) })
+            });
+            const resData = await resp.json();
+            if (resData.success && resData.data) {
+                tr = resData.data;
+            } else {
+                throw new Error(resData.message || 'Transport fetch failed');
+            }
+        } else {
+            // Direct Groq fallback
+            const prompt = `You are an Indian transport expert. Return ONLY raw JSON with no markdown. For travel from ${source} to ${dest} for ${planPersons} persons with budget ₹${budget}, structure: {"trains":[], "buses":[], "flights":[], "local":""}.`;
+            const text = await callDirectGroq(prompt, true);
+            tr = JSON.parse(text.replace(/```json|```/g,'').trim());
+        }
+
+        tr.trains  = tr.trains  || [];
+        tr.buses   = tr.buses   || [];
+        tr.flights = tr.flights || [];
+        tr.local   = tr.local   || '';
+        _tsOptions = tr;
+        renderTransportSelectPage(tr);
+        showPage("transportSelectPage");
+    } catch(e) {
+        showPage("planPage");
+        document.getElementById("planError").innerText = "⚠️ Error: " + e.message;
+    }
+}
+
+function renderTransportSelectPage(tr) {
+    var persons = _tripFormData.persons;
+    var budget  = _tripFormData.budget;
+    var src     = _tripFormData.source.toUpperCase();
+    var dst     = _tripFormData.dest.toUpperCase();
+
+    var sourceInfo = tr.source || 'Verified IRCTC Trains & Commercial Airlines';
+    document.getElementById('tsPageMeta').innerHTML = 
+        src + ' → ' + dst + ' · ' + persons + ' PERSON' + (persons > 1 ? 'S' : '') + ' · ₹' + budget.toLocaleString() + ' BUDGET'
+        + '<div style="margin-top:6px;display:inline-block;background:rgba(0,196,167,0.15);border:1px solid rgba(0,196,167,0.3);padding:3px 10px;border-radius:12px;color:#00c4a7;font-size:10px;letter-spacing:1px;">🛡️ ' + esc(sourceInfo) + '</div>';
+
+    var hasFlights = tr.flights && tr.flights.length > 0;
+    document.getElementById('tsNoFlight').style.display = hasFlights ? 'none' : 'block';
+
+    var html = '';
+
+    function makeCard(type, id, icon, name, subname, duration, price, tag, item) {
+        var total   = price * persons * 2;
+        var pct     = Math.round((total / budget) * 100);
+        var tagCls  = tag === 'Budget Pick' ? 'budget' : (tag.includes('Fast') || tag.includes('Vande') || tag.includes('Rajdhani')) ? 'fast' : 'comfort';
+        var tagIcon = tag === 'Budget Pick' ? '💰' : (tag.includes('Fast') || tag.includes('Vande') || tag.includes('Rajdhani')) ? '⚡' : '🚆';
+        var safeId  = id.replace(/-/g,'_');
+        var safeName= name.replace(/'/g,"\\'");
+
+        var officialBadge = type === 'train'
+            ? '<span class="ts-chip" style="background:rgba(0,151,214,0.15);border-color:rgba(0,151,214,0.4);color:#56c2f5;">🇮🇳 IRCTC Train</span>'
+            : type === 'flight'
+            ? '<span class="ts-chip" style="background:rgba(155,93,229,0.15);border-color:rgba(155,93,229,0.4);color:#b87fff;">✈️ Scheduled Flight</span>'
+            : '<span class="ts-chip" style="background:rgba(244,162,97,0.15);border-color:rgba(244,162,97,0.4);color:#f4a261;">🚌 Roadways AC</span>';
+
+        var directLink = '';
+        var irctcLink = tr.irctcSearchUrl || 'https://www.irctc.co.in/nget/train-search';
+        var confirmTktLink = tr.confirmTktUrl || ('https://www.confirmtkt.com/rrs/' + encodeURIComponent(_tripFormData.source) + '/' + encodeURIComponent(_tripFormData.dest));
+
+        if (type === 'train') {
+            directLink = confirmTktLink;
+        } else if (type === 'flight') {
+            directLink = 'https://www.google.com/travel/flights?q=flights+from+' + encodeURIComponent(_tripFormData.source) + '+to+' + encodeURIComponent(_tripFormData.dest);
+        } else {
+            directLink = 'https://www.redbus.in/bus-tickets/' + encodeURIComponent(_tripFormData.source) + '-to-' + encodeURIComponent(_tripFormData.dest);
+        }
+
+        var extraDetails = '';
+        if (item && item.daysOfRun) {
+            extraDetails += '<div style="font-size:11px;color:#7ab8d4;margin-top:3px;">📅 Runs: ' + esc(Array.isArray(item.daysOfRun) ? item.daysOfRun.join(', ') : item.daysOfRun) + '</div>';
+        }
+        if (item && (item.fromStation || item.fromAirport)) {
+            var st = (item.fromStation || item.fromAirport) + ' ➔ ' + (item.toStation || item.toAirport);
+            extraDetails += '<div style="font-size:11px;color:#a8d8ea;margin-top:2px;">📍 ' + esc(st) + '</div>';
+        }
+
+        var actionButtons = '';
+        if (type === 'train') {
+            actionButtons = 
+                '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+                '<a href="' + confirmTktLink + '" target="_blank" onclick="event.stopPropagation();" style="font-size:11px;color:#00c4a7;text-decoration:none;border:1px solid rgba(0,196,167,0.35);border-radius:8px;padding:4px 9px;background:rgba(0,196,167,0.1);font-weight:700;">' +
+                '⚡ Live Seats ↗</a>' +
+                '<a href="' + irctcLink + '" target="_blank" onclick="event.stopPropagation();" style="font-size:11px;color:#ff8a8a;text-decoration:none;border:1px solid rgba(255,107,107,0.35);border-radius:8px;padding:4px 9px;background:rgba(255,107,107,0.1);font-weight:700;">' +
+                '🎫 IRCTC ↗</a>' +
+                '</div>';
+        } else {
+            actionButtons = 
+                '<a href="' + directLink + '" target="_blank" onclick="event.stopPropagation();" style="font-size:11px;color:#56c2f5;text-decoration:none;border:1px solid rgba(86,194,245,0.3);border-radius:8px;padding:4px 9px;background:rgba(86,194,245,0.08);font-weight:700;">' +
+                '🔍 Check Availability ↗</a>';
+        }
+
+        return '<div class="ts-tr-card" id="tsCard-' + safeId + '" onclick="pickTransport(\'' + safeId + '\',\'' + safeName + '\',' + price + ',' + total + ')">'
+             + '<div class="ts-tr-inner">'
+             +   '<div class="ts-tr-top">'
+             +     '<div class="ts-tr-icon">' + icon + '</div>'
+             +     '<div class="ts-tr-mid">'
+             +       '<div class="ts-tr-name">' + esc(name) + '</div>'
+             +       '<div class="ts-tr-sub">' + esc(subname) + '</div>'
+             +       extraDetails
+             +     '</div>'
+             +     '<div class="ts-tr-price-col">'
+             +       '<div class="ts-tr-price">₹' + price.toLocaleString() + '</div>'
+             +       '<div class="ts-tr-price-label">per person, 1 way</div>'
+             +     '</div>'
+             +   '</div>'
+             +   '<div class="ts-tr-chips">'
+             +     officialBadge
+             +     '<span class="ts-chip ' + tagCls + '">' + tagIcon + ' ' + esc(tag) + '</span>'
+             +     '<span class="ts-chip dur">🕐 ' + esc(duration) + '</span>'
+             +     '<span class="ts-chip pct">' + pct + '% of budget (both ways)</span>'
+             +   '</div>'
+             + '</div>'
+             + '<div class="ts-tr-footer">'
+             +   '<div>'
+             +     '<span class="ts-tr-footer-label">Total both ways (' + persons + ' person' + (persons > 1 ? 's' : '') + '): </span>'
+             +     '<span class="ts-tr-footer-val">₹' + total.toLocaleString() + '</span>'
+             +   '</div>'
+             +   actionButtons
+             + '</div>'
+             + '</div>';
+    }
+
+    // Update Banner for All Trains
+    _allRouteTrains = (tr.allTrains && tr.allTrains.length > 0) ? tr.allTrains : (tr.trains || []);
+    var allTrainsCount = _allRouteTrains.length;
+    var bannerTitle = document.getElementById('allTrainsBannerTitle');
+    if (bannerTitle) {
+        bannerTitle.innerText = 'View All ' + (allTrainsCount > 0 ? allTrainsCount + ' ' : '') + 'Available Trains on this Route & Live IRCTC Seats';
+    }
+
+    if (tr.trains && tr.trains.length) {
+        html += '<div class="ts-section-label">🚆 Authentic Indian Railways Trains <div class="ts-section-line"></div></div>';
+        tr.trains.forEach(function(t, i) {
+            html += makeCard('train', 'train-' + i, '🚆', t.name, t.subname, t.duration, t.price, t.tag || 'Comfortable', t);
+        });
+        var totalTrainsAvailable = allTrainsCount > tr.trains.length ? allTrainsCount : tr.trains.length;
+        html += '<div style="text-align:center;margin:12px 0 24px 0;">'
+             +   '<button onclick="openAllTrainsModal()" style="width:100%;padding:13px 20px;background:linear-gradient(135deg, rgba(0,196,167,0.15), rgba(86,194,245,0.18));border:1.5px solid #00c4a7;border-radius:14px;color:#00c4a7;font-size:13.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;box-shadow:0 4px 15px rgba(0,196,167,0.12);transition:all 0.2s;">'
+             +     '<span>🔍 View All ' + totalTrainsAvailable + ' Trains between these Stations (Where Is My Train &amp; IRCTC Timetable)</span>'
+             +     '<span style="background:#00c4a7;color:#05141e;border-radius:20px;padding:3px 12px;font-size:12px;font-weight:800;">' + totalTrainsAvailable + ' Trains ➔</span>'
+             +   '</button>'
+             + '</div>';
+    }
+    if (tr.buses && tr.buses.length) {
+        html += '<div class="ts-section-label">🚌 Intercity Buses &amp; State Roadways <div class="ts-section-line"></div></div>';
+        tr.buses.forEach(function(b, i) {
+            html += makeCard('bus', 'bus-' + i, '🚌', b.name, b.subname, b.duration, b.price, b.tag || 'Comfortable', b);
+        });
+    }
+    if (hasFlights) {
+        html += '<div class="ts-section-label">✈️ Scheduled Commercial Flights <div class="ts-section-line"></div></div>';
+        tr.flights.forEach(function(f, i) {
+            html += makeCard('flight', 'flight-' + i, '✈️', f.name, f.subname, f.duration, f.price, f.tag || 'Fastest', f);
+        });
+    }
+
+    document.getElementById('tsCardsContainer').innerHTML = html;
+
+    if (tr.local) {
+        document.getElementById('tsLocalWrap').style.display = 'block';
+        document.getElementById('tsLocalBox').innerText = tr.local;
+    }
+}
+
+// Global reference for all available trains on current route
+var _allRouteTrains = [];
+var _currentTrainClassFilter = 'ALL';
+var _currentTrainSearchQuery = '';
+
+function filterAllTrainsSearch(q) {
+    _currentTrainSearchQuery = (q || '').toLowerCase().trim();
+    renderAllTrainsList(_allRouteTrains);
+}
+
+async function openAllTrainsModal() {
+    var src = (_tripFormData && _tripFormData.source) ? _tripFormData.source : 'Hyderabad';
+    var dst = (_tripFormData && _tripFormData.dest) ? _tripFormData.dest : 'Goa';
+
+    document.getElementById('allTrainsModal').classList.add('open');
+    document.getElementById('allTrainsModalRoute').innerText = 
+        (src || '').toUpperCase() + ' ➔ ' + (dst || '').toUpperCase() + ' (Where Is My Train & IRCTC Official Timetable)';
+
+    // Update IRCTC and ConfirmTkt links
+    var irctcLink = (_tsOptions && _tsOptions.irctcSearchUrl) ? _tsOptions.irctcSearchUrl : 'https://www.irctc.co.in/nget/train-search';
+    var confirmLink = (_tsOptions && _tsOptions.confirmTktUrl) ? _tsOptions.confirmTktUrl : ('https://www.confirmtkt.com/rrs/' + encodeURIComponent(src) + '/' + encodeURIComponent(dst));
+
+    document.getElementById('irctcOfficialLink').href = irctcLink;
+    document.getElementById('confirmTktLink').href = confirmLink;
+
+    if (_allRouteTrains && _allRouteTrains.length > 0) {
+        renderAllTrainsList(_allRouteTrains);
+        return;
+    }
+
+    // Fetch from backend railway service
+    document.getElementById('allTrainsListContainer').innerHTML = 
+        '<div class="ts-loading"><div class="mini-loader"></div> Fetching all trains from Indian Railways timetable (Where Is My Train)...</div>';
+
+    try {
+        var resp = await fetch(`${API_BASE}/trains/all?source=${encodeURIComponent(src)}&dest=${encodeURIComponent(dst)}`);
+        var data = await resp.json();
+        if (data.success && data.data && data.data.trains && data.data.trains.length > 0) {
+            _allRouteTrains = data.data.trains;
+            renderAllTrainsList(_allRouteTrains);
+        } else {
+            renderAllTrainsList(_tsOptions ? (_tsOptions.trains || []) : []);
+        }
+    } catch (e) {
+        renderAllTrainsList(_tsOptions ? (_tsOptions.trains || []) : []);
+    }
+}
+
+function filterAllTrainsClass(cls) {
+    _currentTrainClassFilter = cls;
+    ['ALL','SL','3A','2A','CC','2S','1A'].forEach(function(c) {
+        var el = document.getElementById('trainClassFilter' + c);
+        if (el) el.classList.toggle('active', c === cls);
+    });
+    renderAllTrainsList(_allRouteTrains);
+}
+
+function renderAllTrainsList(trains) {
+    var container = document.getElementById('allTrainsListContainer');
+    if (!trains || trains.length === 0) {
+        container.innerHTML = '<div style="color:#7ab8d4;text-align:center;padding:24px;font-size:13px;">No direct trains found for this route. Try connecting via Delhi, Mumbai, or Secunderabad.</div>';
+        return;
+    }
+
+    var filtered = trains;
+    if (_currentTrainClassFilter !== 'ALL') {
+        filtered = filtered.filter(function(t) {
+            if (t.classes && Array.isArray(t.classes)) {
+                return t.classes.some(function(c) { return (c.code || c) === _currentTrainClassFilter; });
+            }
+            if (t.subname) {
+                return t.subname.includes(_currentTrainClassFilter);
+            }
+            return true;
+        });
+    }
+
+    if (_currentTrainSearchQuery) {
+        filtered = filtered.filter(function(t) {
+            var num = (t.trainNo || '').toLowerCase();
+            var name = (t.trainName || t.name || '').toLowerCase();
+            var from = (t.fromStation || t.originStation || '').toLowerCase();
+            var to = (t.toStation || t.destStation || '').toLowerCase();
+            return num.includes(_currentTrainSearchQuery) || name.includes(_currentTrainSearchQuery) || from.includes(_currentTrainSearchQuery) || to.includes(_currentTrainSearchQuery);
+        });
+    }
+
+    var persons = _tripFormData.persons || 1;
+    var html = '';
+
+    filtered.forEach(function(t, idx) {
+        var daysText = Array.isArray(t.runningDays) ? t.runningDays.join(', ') : (t.daysOfRun || 'Daily');
+        var basePrice = t.price || (t.classes && t.classes[0] ? t.classes[0].price : 400);
+        var totalBothWays = basePrice * persons * 2;
+
+        var classPills = '';
+        if (t.classes && Array.isArray(t.classes)) {
+            classPills = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0;">' +
+                t.classes.map(function(c) {
+                    var isAvailable = (c.seatStatus || '').includes('AVAILABLE');
+                    var isRac = (c.seatStatus || '').includes('RAC');
+                    var badgeColor = isAvailable ? '#00c4a7' : (isRac ? '#f4a261' : '#ff6b6b');
+                    var badgeBg = isAvailable ? 'rgba(0,196,167,0.12)' : (isRac ? 'rgba(244,162,97,0.12)' : 'rgba(255,107,107,0.12)');
+
+                    return '<div style="background:' + badgeBg + ';border:1px solid ' + badgeColor + ';padding:4px 10px;border-radius:8px;font-size:11px;">'
+                        + '<span style="font-weight:700;color:#fff;">' + esc(c.code) + '</span> '
+                        + '<span style="color:' + badgeColor + ';font-weight:700;">' + esc(c.seatStatus || 'AVAILABLE') + '</span> '
+                        + '<span style="color:#a8d8ea;">₹' + c.price + '</span>'
+                        + '</div>';
+                }).join('') + '</div>';
+        }
+
+        var directConfirmTkt = 'https://www.confirmtkt.com/train-running-status/' + (t.trainNo || '');
+        var directIRCTC = 'https://www.irctc.co.in/nget/train-search';
+        var displayName = t.trainName || t.name;
+        if (t.trainNo && !displayName.includes(t.trainNo)) {
+            displayName = t.trainNo + ' ' + displayName;
+        }
+
+        var routeInfo = '';
+        if (t.fromStation && t.toStation) {
+            routeInfo = '<div style="font-size:12px;color:#a8d8ea;margin-top:3px;display:flex;align-items:center;gap:6px;">'
+                + '<span>📍</span> <span>' + esc(t.fromStation) + ' ➔ ' + esc(t.toStation) + '</span>'
+                + '</div>';
+        }
+
+        html += '<div style="background:rgba(255,255,255,0.05);border:1px solid rgba(86,194,245,0.22);border-radius:14px;padding:16px;margin-bottom:12px;transition:all 0.2s;">'
+            + '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">'
+            +   '<div>'
+            +     '<div style="font-size:16px;font-weight:700;color:#fff;">' + esc(displayName) + '</div>'
+            +     routeInfo
+            +     '<div style="font-size:11.5px;color:#56c2f5;margin-top:3px;">' + esc(t.type || 'Indian Railways Official') + ' · Train #' + esc(t.trainNo || '') + ' · <span style="color:#00c4a7;font-weight:700;">Where Is My Train Verified ✓</span></div>'
+            +   '</div>'
+            +   '<div style="text-align:right;">'
+            +     '<div style="font-size:18px;font-weight:700;color:#00c4a7;font-family:\'Playfair Display\',serif;">₹' + basePrice.toLocaleString() + '</div>'
+            +     '<div style="font-size:10px;color:#7ab8d4;">per person (1 way)</div>'
+            +   '</div>'
+            + '</div>'
+            + '<div style="display:flex;gap:18px;align-items:center;margin:10px 0;background:rgba(0,0,0,0.2);padding:9px 14px;border-radius:10px;font-size:12px;flex-wrap:wrap;">'
+            +   '<div><span style="color:#7ab8d4;">Departure: </span><strong style="color:#fff;font-size:13px;">' + esc(t.departure || '08:00') + '</strong></div>'
+            +   '<div style="color:#56c2f5;font-weight:700;">➔ ' + esc(t.duration || '') + ' ➔</div>'
+            +   '<div><span style="color:#7ab8d4;">Arrival: </span><strong style="color:#fff;font-size:13px;">' + esc(t.arrival || '18:00') + '</strong></div>'
+            +   '<div style="margin-left:auto;color:#a8d8ea;"><span style="color:#7ab8d4;">Runs: </span><strong style="color:#00c4a7;">' + esc(daysText) + '</strong></div>'
+            + '</div>'
+            + classPills
+            + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);flex-wrap:wrap;gap:8px;">'
+            +   '<div style="font-size:12px;color:#7ab8d4;">Total both ways for ' + persons + ' person(s): <strong style="color:#00c4a7;">₹' + totalBothWays.toLocaleString() + '</strong></div>'
+            +   '<div style="display:flex;gap:8px;">'
+            +     '<a href="' + directConfirmTkt + '" target="_blank" style="padding:7px 14px;background:rgba(0,196,167,0.15);border:1px solid #00c4a7;border-radius:8px;color:#00c4a7;text-decoration:none;font-size:11.5px;font-weight:700;">⚡ Where Is My Train / Live Seats ↗</a>'
+            +     '<a href="' + directIRCTC + '" target="_blank" style="padding:7px 14px;background:rgba(230,57,70,0.15);border:1px solid #e63946;border-radius:8px;color:#ff8a8a;text-decoration:none;font-size:11.5px;font-weight:700;">🎫 IRCTC Book ↗</a>'
+            +     '<button onclick="selectTrainFromModal(\'' + esc(t.trainNo || '') + '\',\'' + esc((displayName).replace(/'/g, "\\'")) + '\',' + basePrice + ',' + totalBothWays + ')" style="padding:7px 16px;background:linear-gradient(135deg, #0097d6, #00c4a7);border:none;border-radius:8px;color:#fff;font-size:11.5px;font-weight:700;cursor:pointer;">Select for Trip ✓</button>'
+            +   '</div>'
+            + '</div>'
+            + '</div>';
+    });
+
+    container.innerHTML = html;
+}
+
+function selectTrainFromModal(trainNo, name, price, totalBothWays) {
+    _tsPicked = { id: 'modal_train_' + trainNo, name: name, price: totalBothWays };
+    
+    var bar = document.getElementById('tsPickedBar');
+    if (bar) {
+        bar.classList.add('show');
+        document.getElementById('tsPickedText').innerText =
+            '✅ ' + name + ' — ₹' + totalBothWays.toLocaleString() + ' both ways for ' + _tripFormData.persons + ' person(s)';
+    }
+
+    var proceedBtn = document.getElementById('tsProceedBtn');
+    if (proceedBtn) proceedBtn.classList.add('show');
+
+    closeModal('allTrainsModal');
+    showToast('Selected: ' + name);
+}
+
+function pickTransport(safeId, name, pricePerPersonOneWay, totalBothWays) {
+    document.querySelectorAll('.ts-tr-card').forEach(function(c) { c.classList.remove('picked'); });
+    document.getElementById('tsCard-' + safeId).classList.add('picked');
+    _tsPicked = { id: safeId, name: name, price: totalBothWays };
+
+    var bar = document.getElementById('tsPickedBar');
+    bar.classList.add('show');
+    document.getElementById('tsPickedText').innerText =
+        '✅ ' + name + ' — ₹' + totalBothWays.toLocaleString() + ' both ways for ' + _tripFormData.persons + ' person(s)';
+
+    document.getElementById('tsProceedBtn').classList.add('show');
+}
+
+function clearTsPick() {
+    document.querySelectorAll('.ts-tr-card').forEach(function(c) { c.classList.remove('picked'); });
+    _tsPicked = null;
+    document.getElementById('tsPickedBar').classList.remove('show');
+    document.getElementById('tsProceedBtn').classList.remove('show');
+}
+
+function proceedWithTransport() {
+    if (!_tsPicked) return;
+    var budget        = _tripFormData.budget;
+    var transportCost = _tsPicked.price;
+    var remaining     = budget - transportCost;
+    var persons       = _tripFormData.persons;
+    var days          = _tripFormData.days;
+
+    var stayFactor = _tripFormData.stay === 'relative' ? 0 : 800 * Math.ceil(persons / 2) * days;
+    var foodMin    = 400 * persons * days;
+    var minNeeded  = stayFactor + foodMin;
+
+    if (remaining <= 0 || remaining < minNeeded) {
+        var shortage = minNeeded - remaining;
+        document.getElementById('bwMsg').innerText =
+            'Your selected transport (' + _tsPicked.name + ') costs ₹' + transportCost.toLocaleString()
+            + ' for ' + persons + ' person(s) both ways. After transport, you have ₹'
+            + Math.max(0, remaining).toLocaleString()
+            + ' left — which is not enough to cover ' + days + ' day(s) of accommodation and food at ' + _tripFormData.dest + '.';
+
+        document.getElementById('bwBreakdown').innerHTML =
+            '<div class="budget-warn-row"><span class="bw-label">Total Budget</span><span class="bw-val">₹' + budget.toLocaleString() + '</span></div>'
+          + '<div class="budget-warn-row"><span class="bw-label">Transport Cost (both ways)</span><span class="bw-val red">− ₹' + transportCost.toLocaleString() + '</span></div>'
+          + '<div class="budget-warn-row"><span class="bw-label">Remaining Budget</span><span class="bw-val ' + (remaining > 0 ? '' : 'red') + '">₹' + Math.max(0,remaining).toLocaleString() + '</span></div>'
+          + '<div class="budget-warn-row"><span class="bw-label">Min. needed for ' + days + ' days</span><span class="bw-val">₹' + minNeeded.toLocaleString() + '</span></div>'
+          + '<div class="budget-warn-row"><span class="bw-label">Shortfall</span><span class="bw-val red">₹' + Math.max(0,shortage).toLocaleString() + '</span></div>';
+
+        showPage('budgetWarnPage');
+    } else {
+        generateFullPlan(remaining);
+    }
+}
+
+function proceedAnyway() {
+    var budget = _tripFormData.budget;
+    var remaining = budget - (_tsPicked ? _tsPicked.price : 0);
+    generateFullPlan(Math.max(remaining, 0));
+}
+
+async function generateFullPlan(remainingBudget) {
+    var t = _tripFormData;
+    aiTripData = {
+        source: t.source, dest: t.dest, days: t.days,
+        budget: remainingBudget, style: t.style,
+        persons: t.persons, stay: t.stay,
+        transport: _tsPicked ? _tsPicked.name : 'Own arrangement'
+    };
+
+    var styleLabels = {
+        budget:'🎒 Budget Backpacker', comfort:'😊 Comfort Traveller',
+        luxury:'💎 Luxury Explorer', family:'👨‍👩‍👧 Family Trip',
+        adventure:'🧗 Adventure Seeker', spiritual:'🙏 Spiritual Journey'
+    };
+
+    document.getElementById("resSource").innerText      = t.source;
+    document.getElementById("resDestination").innerText = t.dest;
+    document.getElementById("resDays").innerText        = t.days;
+    document.getElementById("resPersons").innerText     = t.persons + (t.persons > 1 ? " persons" : " person");
+    document.getElementById("resBudget").innerText      = t.budget.toLocaleString();
+    document.getElementById("resStyle").innerText       = styleLabels[t.style] || t.style;
+    document.getElementById("resStay").innerText        = t.stay === 'relative' ? "🏠 Relative's House (Free Stay)" : "🏨 Hotel";
+    document.getElementById("resStay").style.color      = t.stay === 'relative' ? "#00c4a7" : "#fff";
+
+    ['itinerary','hotels','transport','food','budget'].forEach(function(tab) {
+        var sec = document.getElementById('section-' + tab);
+        sec.innerHTML = '<div class="tab-loading"><div class="mini-loader"></div> Loading...</div>';
+        sec.dataset.aiLoaded = 'false';
+        document.getElementById('tab-' + tab).classList.remove('active');
+        sec.classList.remove('open');
+    });
+    document.getElementById('tab-itinerary').classList.add('active');
+    document.getElementById('section-itinerary').classList.add('open');
+    document.getElementById('tripSummaryBody').innerHTML =
+        '<div class="ts-loading"><div class="mini-loader"></div> Building your trip summary...</div>';
+
+    showPage("processingPage");
+    document.getElementById("procStatus").innerText   = "AI is crafting your full trip plan...";
+    startStatusCycle();
+
+    try {
+        await loadAiTab('itinerary');
+        stopStatusCycle();
+        showPage("resultPage");
+        loadTripSummary();
+    } catch(e) {
+        stopStatusCycle();
+        showPage("planPage");
+        document.getElementById("planError").innerText = "⚠️ Could not generate plan. Please try again.";
+    }
+}
+
+function switchAiTab(tab) {
+    ['itinerary','hotels','transport','food','budget'].forEach(function(t) {
+        document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+        document.getElementById('section-' + t).classList.toggle('open', t === tab);
+    });
+    var sec = document.getElementById('section-' + tab);
+    if (sec.dataset.aiLoaded !== 'true') loadAiTab(tab);
+}
+
+async function loadAiTab(tab) {
+    var sec = document.getElementById('section-' + tab);
+    sec.innerHTML = '<div class="tab-loading"><div class="mini-loader"></div> Generating ' + tab + '...</div>';
+    sec.dataset.aiLoaded = 'false';
+
+    try {
+        let text;
+        if (isBackendConnected) {
+            const resp = await fetch(`${API_BASE}/ai/tab`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tab,
+                    source: aiTripData.source,
+                    dest: aiTripData.dest,
+                    days: aiTripData.days,
+                    persons: aiTripData.persons,
+                    budget: aiTripData.budget,
+                    style: aiTripData.style,
+                    stay: aiTripData.stay
+                })
+            });
+            const data = await resp.json();
+            if (data.success) text = data.text;
+            else throw new Error(data.message);
+        } else {
+            text = await callDirectGroq(`Generate ${tab} plan for travel from ${aiTripData.source} to ${aiTripData.dest} for ${aiTripData.days} days with budget ₹${aiTripData.budget}`, false);
+        }
+
+        sec.innerHTML = '<div class="ai-content">' + formatAiText(text) + '</div>';
+        sec.dataset.aiLoaded = 'true';
+    } catch(e) {
+        sec.innerHTML = '<div class="ai-content" style="color:#ff6b6b;padding:16px;">⚠️ ' + e.message + '</div>';
+    }
+}
+
+async function loadTripSummary() {
+    var t = aiTripData;
+    try {
+        let s;
+        if (isBackendConnected) {
+            const resp = await fetch(`${API_BASE}/ai/summary`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(t)
+            });
+            const data = await resp.json();
+            if (data.success) s = data.data;
+            else throw new Error(data.message);
+        } else {
+            const prompt = `Return JSON summary for trip ${t.source} to ${t.dest}, budget ₹${t.budget}. Keys: travel_cost, hotel_cost, food_activities, grand_total, balance_left, must_carry, best_time, money_tip.`;
+            const raw = await callDirectGroq(prompt, true);
+            s = JSON.parse(raw.replace(/```json|```/g, '').trim());
+        }
+        renderTripSummary(s);
+    } catch(e) {
+        document.getElementById('tripSummaryBody').innerHTML =
+            '<div class="ts-loading" style="color:#ff6b6b;">⚠️ ' + e.message + '</div>';
+    }
+}
+
+function renderTripSummary(s) {
+    document.getElementById('tripSummaryBody').innerHTML =
+        '<div class="ts-grid">'
+        + '<div class="ts-cell"><div class="ts-label">Travel Cost</div><div class="ts-value">' + esc(s.travel_cost || 'N/A') + '</div></div>'
+        + '<div class="ts-cell"><div class="ts-label">Hotel Cost</div><div class="ts-value">' + esc(s.hotel_cost || 'N/A') + '</div></div>'
+        + '<div class="ts-cell"><div class="ts-label">Food &amp; Activities</div><div class="ts-value">' + esc(s.food_activities || 'N/A') + '</div></div>'
+        + '<div class="ts-cell"><div class="ts-label">Grand Total</div><div class="ts-value highlight">' + esc(s.grand_total || 'N/A') + '</div></div>'
+        + '<div class="ts-cell"><div class="ts-label">Balance Left</div><div class="ts-value warn">' + esc(s.balance_left || 'N/A') + '</div></div>'
+        + '<div class="ts-cell"><div class="ts-label">Must Carry</div><div class="ts-value">' + esc(s.must_carry || 'N/A') + '</div></div>'
+        + '<div class="ts-cell full-width"><div class="ts-label">Best Time</div><div class="ts-value">' + esc(s.best_time || 'N/A') + '</div></div>'
+        + '<div class="ts-cell full-width" style="border-bottom:none;"><div class="ts-label">Money Tip</div><div class="ts-value">' + esc(s.money_tip || 'N/A') + '</div></div>'
+        + '</div>';
+}
+
+function formatAiText(text) {
+    var lines = text.split('\n'), html = '', inList = false;
+    lines.forEach(function(line) {
+        line = line.trim();
+        if (!line) { if (inList) { html += '</ul>'; inList = false; } return; }
+        if (/^day\s*\d+/i.test(line) || /^📅|^🗓/.test(line)) {
+            if (inList) { html += '</ul>'; inList = false; }
+            html += '<div class="day-block"><h4>' + esc(line) + '</h4>'; return;
+        }
+        if (/^#{1,3}\s/.test(line)) {
+            if (inList) { html += '</ul>'; inList = false; }
+            html += '<h' + (line.match(/^#+/)[0].length === 1 ? '3' : '4') + '>' + esc(line.replace(/^#+\s*/,'')) + '</h' + (line.match(/^#+/)[0].length === 1 ? '3' : '4') + '>'; return;
+        }
+        if (/^\*\*.*\*\*$/.test(line)) {
+            if (inList) { html += '</ul>'; inList = false; }
+            html += '<h4>' + esc(line.replace(/\*\*/g,'')) + '</h4>'; return;
+        }
+        if (/^[-•*]\s/.test(line)) {
+            if (!inList) { html += '<ul>'; inList = true; }
+            html += '<li>' + inl(line.replace(/^[-•*]\s/,'')) + '</li>'; return;
+        }
+        if (/^\d+\.\s/.test(line)) {
+            if (inList) { html += '</ul>'; inList = false; }
+            html += '<p style="margin:8px 0;color:#c8e4f0;">• ' + inl(line.replace(/^\d+\.\s/,'')) + '</p>'; return;
+        }
+        if (/^(💡|tip:|note:|pro tip:)/i.test(line)) {
+            if (inList) { html += '</ul>'; inList = false; }
+            html += '<div class="tip-box">' + inl(line) + '</div>'; return;
+        }
+        if (/^---+$/.test(line)) {
+            if (inList) { html += '</ul>'; inList = false; }
+            html += '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:16px 0;">'; return;
+        }
+        if (inList) { html += '</ul>'; inList = false; }
+        html += '<p style="margin:6px 0;color:#c8e4f0;">' + inl(line) + '</p>';
+    });
+    if (inList) html += '</ul>';
+    return html;
+}
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function inl(s) {
+    return esc(s)
+        .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g,'<em style="color:#f4a261;font-style:normal;font-weight:700;">$1</em>')
+        .replace(/(₹[\d,]+)/g,'<span class="cost-badge">$1</span>');
+}
+
+// UI & MODALS
+var isDark = true;
+function toggleTheme(){
+    isDark = !isDark;
+    document.body.classList.toggle('light', !isDark);
+    document.getElementById('themeToggle').innerHTML = isDark ? '&#127769;' : '&#9728;';
+    localStorage.setItem('st_theme', isDark ? 'dark' : 'light');
+}
+function showToast(msg){
+    var t = document.getElementById('toast');
+    t.innerText = msg;
+    t.classList.add('show');
+    setTimeout(function(){ t.classList.remove('show'); }, 3000);
+}
+function showFabs(){ document.getElementById('fabGroup').style.display = 'flex'; }
+function openModal(id){
+    document.getElementById(id).classList.add('open');
+    if (id === 'phraseModal') loadPhrases();
+    if (id === 'mapsModal') loadMap();
+    if (id === 'saveModal') loadSavedTrips();
+    if (id === 'currencyModal') convertCurrency();
+    if (id === 'expenseModal') updateExpenseUI();
+    if (id === 'packModal') loadPackingList();
+    if (id === 'weatherModal') {
+        const inp = document.getElementById('weatherCityInput');
+        if (!inp.value.trim() && aiTripData && aiTripData.dest) {
+            inp.value = aiTripData.dest;
+            fetchWeatherAI();
+        } else if (inp.value.trim()) {
+            fetchWeatherAI();
+        }
+    }
+}
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+function googleLogin(){ showToast('Please sign in using your email.'); }
+document.addEventListener('click', function(e){
+    if (e.target.classList.contains('modal-overlay')) e.target.classList.remove('open');
+});
+
+// AI CHAT
+async function sendChat(){
+    var input = document.getElementById('chatInput');
+    var msg = input.value.trim();
+    if (!msg) return;
+    input.value = '';
+    var dest = (aiTripData && aiTripData.dest) ? aiTripData.dest : 'India';
+    appendChat('user', msg);
+    appendChat('ai', 'Thinking...', true);
+
+    try {
+        let reply;
+        if (isBackendConnected) {
+            const resp = await fetch(`${API_BASE}/ai/chat`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: msg, dest })
+            });
+            const data = await resp.json();
+            if (data.success) reply = data.reply;
+            else throw new Error(data.message);
+        } else {
+            reply = await callDirectGroq(`Answer about trip to ${dest}: ${msg}`, false);
+        }
+        removeLastAiMsg();
+        appendChat('ai', reply);
+    } catch(e) {
+        removeLastAiMsg();
+        appendChat('ai', 'Could not get response from AI.');
+    }
+}
+function chatSuggest(el){ document.getElementById('chatInput').value = el.innerText; sendChat(); }
+function appendChat(role, text, thinking){
+    var box = document.getElementById('chatMessages');
+    var d = document.createElement('div');
+    d.className = 'chat-msg ' + role + (thinking ? ' thinking' : '');
+    d.innerText = text;
+    box.appendChild(d);
+    box.scrollTop = box.scrollHeight;
+}
+function removeLastAiMsg(){
+    var msgs = document.querySelectorAll('#chatMessages .chat-msg.ai');
+    if (msgs.length) msgs[msgs.length - 1].remove();
+}
+
+// WEATHER
+async function fetchWeatherAI(){
+    var city = document.getElementById('weatherCityInput').value.trim() || (aiTripData && aiTripData.dest) || '';
+    if (!city) { showToast('Enter a city'); return; }
+    document.getElementById('weatherResult').innerHTML = '<div class="tab-loading"><div class="mini-loader"></div> Getting weather...</div>';
+
+    try {
+        let d;
+        if (isBackendConnected) {
+            const resp = await fetch(`${API_BASE}/ai/weather`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ city })
+            });
+            const data = await resp.json();
+            if (data.success) d = data.data;
+            else throw new Error(data.message);
+        } else {
+            const raw = await callDirectGroq(`Weather for ${city} as JSON with temp, feels, condition, icon, humidity, wind, best_months, avoid, tip`, true);
+            d = JSON.parse(raw.replace(/```json|```/g,'').trim());
+        }
+
+        var icons = { sunny:'☀️', cloudy:'☁️', rainy:'🌧️', stormy:'⛈️', foggy:'🌫️', snowy:'❄️' };
+        var ico = icons[d.icon] || d.icon || '⛅';
+        var displayCity = d.city || city;
+        document.getElementById('weatherResult').innerHTML = `
+            <div class="weather-card">
+                <div style="font-size:12px;font-weight:700;color:#56c2f5;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
+                    <span>📍 ${esc(displayCity)}</span>
+                    <span style="font-size:10px;background:rgba(0,196,167,0.15);border:1px solid rgba(0,196,167,0.3);padding:2px 8px;border-radius:10px;color:#00c4a7;">Live Weather</span>
+                </div>
+                <div class="weather-top">
+                    <div class="weather-icon">${ico}</div>
+                    <div>
+                        <div class="weather-temp">${d.temp || '28°C'}</div>
+                        <div class="weather-desc">${d.condition || 'Clear'} - Feels ${d.feels || '30°C'}</div>
+                    </div>
+                </div>
+                <div class="weather-details">
+                    <div class="weather-detail-item"><div class="weather-detail-label">Humidity</div><div class="weather-detail-val">${d.humidity || '65%'}</div></div>
+                    <div class="weather-detail-item"><div class="weather-detail-label">Wind</div><div class="weather-detail-val">${d.wind || '12 km/h'}</div></div>
+                    <div class="weather-detail-item"><div class="weather-detail-label">Best Months</div><div class="weather-detail-val">${d.best_months || 'Oct-Mar'}</div></div>
+                    <div class="weather-detail-item"><div class="weather-detail-label">Avoid</div><div class="weather-detail-val">${d.avoid || 'May-Jun'}</div></div>
+                </div>
+            </div>
+            <div style="background:rgba(0,151,214,0.08);border-left:3px solid #0097d6;border-radius:0 10px 10px 0;padding:10px 14px;margin-top:10px;color:#a8d8ea;font-size:13px;">
+                Tip: ${d.tip || 'Stay hydrated and dress comfortably.'}
+            </div>`;
+    } catch(e) {
+        document.getElementById('weatherResult').innerHTML = '<div style="color:#ff6b6b;padding:16px;">Error: ' + e.message + '</div>';
+    }
+}
+
+// EXPENSE TRACKER WITH BACKEND SYNC
+var expenses = JSON.parse(localStorage.getItem('st_expenses') || '[]');
+
+async function addExpense() {
+    var name = document.getElementById('expName').value.trim();
+    var amt = parseFloat(document.getElementById('expAmount').value);
+    var cat = document.getElementById('expCategory').value;
+    var who = document.getElementById('expPerson').value.trim() || 'Me';
+
+    if (!name || isNaN(amt) || amt <= 0) {
+        showToast('Enter valid name and amount');
+        return;
+    }
+
+    const expObj = { id: Date.now(), name, amount: amt, category: cat, person: who };
+    expenses.push(expObj);
+    localStorage.setItem('st_expenses', JSON.stringify(expenses));
+
+    if (isBackendConnected) {
+        try {
+            await fetch(`${API_BASE}/expenses`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
+                },
+                body: JSON.stringify(expObj)
+            });
+        } catch(e) {}
+    }
+
+    document.getElementById('expName').value = '';
+    document.getElementById('expAmount').value = '';
+    updateExpenseUI();
+    showToast('Expense Added!');
+}
+
+async function deleteExpense(id) {
+    expenses = expenses.filter(e => e.id !== id && e._id !== id);
+    localStorage.setItem('st_expenses', JSON.stringify(expenses));
+
+    if (isBackendConnected) {
+        try {
+            await fetch(`${API_BASE}/expenses/${id}`, {
+                method: 'DELETE',
+                headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {}
+            });
+        } catch(e) {}
+    }
+    updateExpenseUI();
+}
+
+function updateExpenseUI() {
+    var total = expenses.reduce((s, e) => s + e.amount, 0);
+    var budget = aiTripData && aiTripData.budget ? parseInt(aiTripData.budget) : 0;
+    var left = budget - total;
+
+    document.getElementById('expTotal').innerText = '₹' + total.toLocaleString();
+    document.getElementById('expLeft').innerText = '₹' + Math.max(0, left).toLocaleString();
+    document.getElementById('expCount').innerText = expenses.length;
+    document.getElementById('expLeft').style.color = left < 0 ? '#ff6b6b' : '#00c4a7';
+
+    var html = '';
+    expenses.slice().reverse().forEach(function(e) {
+        var expId = e._id || e.id;
+        html += `<div class="expense-item">
+            <div class="expense-item-cat">${(e.category || 'O').charAt(0)}</div>
+            <div>
+                <div class="expense-item-name">${esc(e.name)}</div>
+                <div class="expense-item-person">Paid by: ${esc(e.person || 'Me')}</div>
+            </div>
+            <div class="expense-item-amt">₹${e.amount.toLocaleString()}</div>
+            <button class="expense-item-del" onclick="deleteExpense('${expId}')">✕</button>
+        </div>`;
+    });
+
+    document.getElementById('expenseList').innerHTML = html || '<div style="color:#7ab8d4;text-align:center;padding:16px;font-size:13px;">No expenses yet</div>';
+
+    if (expenses.length > 0) {
+        var byP = {};
+        expenses.forEach(e => { byP[e.person] = (byP[e.person] || 0) + e.amount; });
+        var sh = '';
+        for (var p in byP) {
+            sh += `<div class="split-row"><span>${esc(p)}</span><span>₹${byP[p].toLocaleString()}</span></div>`;
+        }
+        sh += `<div class="split-row"><span>Total</span><span>₹${total.toLocaleString()}</span></div>`;
+        document.getElementById('splitSummary').innerHTML = sh;
+        document.getElementById('splitSection').style.display = 'block';
+    } else {
+        document.getElementById('splitSection').style.display = 'none';
+    }
+}
+
+// PACKING LIST
+var packChecked = JSON.parse(localStorage.getItem('st_packing') || '{}');
+var packCat = 'Essentials';
+var packingData = {};
+var defaultPacking = {
+    'Essentials': ['Aadhaar / Passport', 'Tickets & Boarding Passes', 'Hotel Confirmation', 'Cash & Cards', 'Phone & Fast Charger', 'Power Bank', 'Earphones', 'Water Bottle'],
+    'Clothing': ['T-Shirts & Tops', 'Trousers / Shorts', 'Underwear & Socks', 'Sleepwear', 'Light Jacket / Sweater', 'Walking Shoes', 'Slippers / Sandals', 'Umbrella / Raincoat'],
+    'Toiletries': ['Toothbrush & Paste', 'Shampoo & Soap', 'Sunscreen SPF 50+', 'Deodorant', 'Moisturiser & Lip Balm', 'Razor & Shaving Kit', 'Comb / Hairbrush', 'Hand Towel'],
+    'Health': ['Pain Relievers / Paracetamol', 'Anti-nausea Tablets', 'ORS Sachets', 'Band-Aids & Antiseptic', 'Mosquito Repellent', 'Hand Sanitizer', 'Prescription Medicines', 'Digital Thermometer'],
+    'Tech': ['Camera & Extra Batteries', 'Memory Card', 'Laptop & Work Charger', 'Earphones / AirPods', 'Multi-plug Travel Adapter', 'USB-C Cable', 'Portable Speaker'],
+    'Misc': ['Healthy Snacks / Energy Bars', 'Reading Book / Kindle', 'Neck Pillow for Transit', 'Eye Mask & Earplugs', 'Luggage Combination Lock', 'Cloth Shopping Bag', 'Ziploc Pouches', 'Sunglasses UV400']
+};
+
+function loadPackingList() {
+    var cats = Object.keys(defaultPacking);
+    var el = document.getElementById('packCats');
+    if (!el) return;
+    el.innerHTML = cats.map(c => `
+        <button class="pack-cat-btn ${c === packCat ? 'active' : ''}" onclick="switchPackCat('${c}')">${c}</button>
+    `).join('');
+    renderPackItems();
+}
+
+function switchPackCat(c) {
+    packCat = c;
+    loadPackingList();
+}
+
+function renderPackItems() {
+    var items = (packingData[packCat] || defaultPacking[packCat] || []);
+    var all = Object.values(defaultPacking).flat();
+    var done = Object.keys(packChecked).filter(k => packChecked[k]).length;
+    var el = document.getElementById('packItems');
+    if (!el) return;
+
+    document.getElementById('packProgressText').innerText = `${done} of ${all.length} items packed`;
+    document.getElementById('packProgressBar').style.width = (all.length ? Math.round(done / all.length * 100) : 0) + '%';
+
+    el.innerHTML = items.map((item, i) => {
+        var key = packCat + '_' + i;
+        var chk = !!packChecked[key];
+        return `
+            <div class="pack-item ${chk ? 'checked' : ''}" onclick="togglePack('${key}')">
+                <div class="pack-checkbox">${chk ? '✓' : ''}</div>
+                <div class="pack-item-name">${esc(item)}</div>
+            </div>`;
+    }).join('');
+}
+
+function togglePack(key) {
+    packChecked[key] = !packChecked[key];
+    localStorage.setItem('st_packing', JSON.stringify(packChecked));
+    renderPackItems();
+}
+
+async function generatePackingList() {
+    var dest = (aiTripData && aiTripData.dest) || 'India';
+    var days = (aiTripData && aiTripData.days) || 3;
+    document.getElementById('packItems').innerHTML = '<div class="tab-loading"><div class="mini-loader"></div> AI generating packing list...</div>';
+
+    try {
+        let d;
+        if (isBackendConnected) {
+            const resp = await fetch(`${API_BASE}/ai/packing`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dest, days })
+            });
+            const resData = await resp.json();
+            if (resData.success) d = resData.data;
+            else throw new Error(resData.message);
+        } else {
+            const raw = await callDirectGroq(`Packing list for ${days}-day trip to ${dest}. JSON keys: Essentials, Clothing, Toiletries, Health, Tech, Misc.`, true);
+            d = JSON.parse(raw.replace(/```json|```/g, '').trim());
+        }
+        packingData = d;
+        renderPackItems();
+        showToast('Packing list generated!');
+    } catch(e) {
+        renderPackItems();
+        showToast('Using standard packing list');
+    }
+}
+
+// CURRENCY CONVERTER
+var RATES = { INR: 1, USD: 0.012, EUR: 0.011, GBP: 0.0095, AED: 0.044, SGD: 0.016, JPY: 1.78, AUD: 0.019 };
+function convertCurrency() {
+    var amt = parseFloat(document.getElementById('currFrom').value) || 0;
+    var from = document.getElementById('currFromCode').value;
+    var to = document.getElementById('currToCode').value;
+    var res = (amt / RATES[from]) * RATES[to];
+    document.getElementById('currResult').innerText = res.toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' ' + to;
+
+    var inINR = amt / RATES[from];
+    var html = '';
+    Object.keys(RATES).filter(c => c !== from && c !== to).slice(0, 6).forEach(c => {
+        html += `
+            <div class="currency-rate-item">
+                <div class="currency-rate-flag">${c}</div>
+                <div class="currency-rate-code">${c}</div>
+                <div class="currency-rate-val">${(inINR * RATES[c]).toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+            </div>`;
+    });
+    document.getElementById('currencyRates').innerHTML = html;
+}
+function swapCurrency() {
+    var a = document.getElementById('currFromCode').value;
+    var b = document.getElementById('currToCode').value;
+    document.getElementById('currFromCode').value = b;
+    document.getElementById('currToCode').value = a;
+    convertCurrency();
+}
+
+// LOCAL PHRASES
+async function loadPhrases() {
+    var dest = (aiTripData && aiTripData.dest) || '';
+    if (!dest) {
+        document.getElementById('phraseContent').innerHTML = '<div style="color:#7ab8d4;text-align:center;padding:20px;">Plan a trip first!</div>';
+        return;
+    }
+    document.getElementById('phraseContent').innerHTML = '<div class="tab-loading"><div class="mini-loader"></div> Loading phrases...</div>';
+
+    try {
+        let data;
+        if (isBackendConnected) {
+            const resp = await fetch(`${API_BASE}/ai/phrases`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dest })
+            });
+            const resData = await resp.json();
+            if (resData.success) data = resData.data;
+            else throw new Error(resData.message);
+        } else {
+            const raw = await callDirectGroq(`15 travel phrases for ${dest} as JSON array with english, local, pronounce, category.`, true);
+            data = JSON.parse(raw.replace(/```json|```/g, '').trim());
+        }
+
+        var cats = {};
+        data.forEach(p => { (cats[p.category] = cats[p.category] || []).push(p); });
+        var html = '';
+        for (var cat in cats) {
+            html += `<div class="phrase-category">
+                <div class="phrase-cat-title">${cat} <div class="phrase-cat-line"></div></div>`;
+            cats[cat].forEach(p => {
+                html += `
+                    <div class="phrase-item">
+                        <div>
+                            <div class="phrase-english">${esc(p.english)}</div>
+                            <div class="phrase-local">${esc(p.local)}</div>
+                            <div class="phrase-pronounce">${esc(p.pronounce)}</div>
+                        </div>
+                        <button class="phrase-speak" onclick="speakText('${esc(p.local)}')">🔊</button>
+                    </div>`;
+            });
+            html += '</div>';
+        }
+        document.getElementById('phraseContent').innerHTML = html;
+    } catch(e) {
+        document.getElementById('phraseContent').innerHTML = '<div style="color:#ff6b6b;padding:16px;">Error: ' + e.message + '</div>';
+    }
+}
+
+function speakText(text) {
+    if ('speechSynthesis' in window) {
+        var u = new SpeechSynthesisUtterance(text);
+        u.lang = 'hi-IN';
+        window.speechSynthesis.speak(u);
+    } else {
+        showToast('Speech not supported on this browser');
+    }
+}
+
+// MAPS
+function loadMap() {
+    var dest = (aiTripData && aiTripData.dest) || 'India';
+    var src  = (aiTripData && aiTripData.source) || '';
+    var q = encodeURIComponent(dest + ', India');
+    document.getElementById('mapFrame').innerHTML = `<iframe class="map-frame" src="https://maps.google.com/maps?q=${q}&output=embed" allowfullscreen loading="lazy"></iframe>`;
+    document.getElementById('mapLinks').innerHTML = `
+        <a class="map-link-btn" href="https://www.google.com/maps/search/${q}" target="_blank">Open in Google Maps</a>
+        ${src ? `<a class="map-link-btn" href="https://www.google.com/maps/dir/${encodeURIComponent(src + ', India')}/${q}" target="_blank">Get Directions</a>` : ''}
+    `;
+}
+
+// SAVE & SHARE TRIPS WITH BACKEND
+async function saveCurrentTrip() {
+    if (!aiTripData || !aiTripData.dest) {
+        showToast('Plan a trip first!');
+        return;
+    }
+
+    const tripPayload = {
+        sourceCity: aiTripData.source,
+        destination: aiTripData.dest,
+        days: aiTripData.days,
+        budget: aiTripData.budget,
+        travelStyle: aiTripData.style,
+        persons: aiTripData.persons,
+        stayPreference: aiTripData.stay,
+        selectedTransport: _tsPicked,
+        summary: {},
+        guestId: currentUser ? currentUser.email : 'guest'
+    };
+
+    // Save to local storage
+    var trips = JSON.parse(localStorage.getItem('st_saved') || '[]');
+    const localTrip = {
+        id: Date.now(),
+        name: `${aiTripData.source} to ${aiTripData.dest}`,
+        days: aiTripData.days,
+        budget: aiTripData.budget,
+        date: new Date().toLocaleDateString()
+    };
+    trips.unshift(localTrip);
+    localStorage.setItem('st_saved', JSON.stringify(trips.slice(0, 10)));
+
+    if (isBackendConnected) {
+        try {
+            await fetch(`${API_BASE}/trips`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {})
+                },
+                body: JSON.stringify(tripPayload)
+            });
+        } catch(e) {}
+    }
+
+    loadSavedTrips();
+    document.getElementById('shareOptions').style.display = 'grid';
+    showToast('Trip saved to database!');
+}
+
+async function loadSavedTrips() {
+    let trips = [];
+
+    if (isBackendConnected) {
+        try {
+            const resp = await fetch(`${API_BASE}/trips`, {
+                headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {}
+            });
+            const data = await resp.json();
+            if (data.success && data.data) {
+                trips = data.data.map(t => ({
+                    id: t._id,
+                    name: `${t.sourceCity} to ${t.destination}`,
+                    days: t.days,
+                    budget: t.budget,
+                    date: new Date(t.createdAt).toLocaleDateString()
+                }));
+            }
+        } catch(e) {}
+    }
+
+    if (trips.length === 0) {
+        trips = JSON.parse(localStorage.getItem('st_saved') || '[]');
+    }
+
+    document.getElementById('savedTripsList').innerHTML = trips.length
+        ? trips.map(t => `
+            <div class="saved-trip-item">
+                <div style="font-size:22px;">✈️</div>
+                <div class="saved-trip-info">
+                    <div class="saved-trip-name">${esc(t.name)}</div>
+                    <div class="saved-trip-meta">${t.days} days - ₹${parseInt(t.budget).toLocaleString()} - ${t.date}</div>
+                </div>
+                <button class="saved-trip-del" onclick="delTrip('${t.id}')">✕</button>
+            </div>
+        `).join('')
+        : '<div style="color:#7ab8d4;text-align:center;padding:16px;font-size:13px;">No saved trips</div>';
+
+    if (trips.length > 0) document.getElementById('shareOptions').style.display = 'grid';
+}
+
+async function delTrip(id) {
+    if (isBackendConnected) {
+        try {
+            await fetch(`${API_BASE}/trips/${id}`, {
+                method: 'DELETE',
+                headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {}
+            });
+        } catch(e) {}
+    }
+
+    var localTrips = JSON.parse(localStorage.getItem('st_saved') || '[]');
+    localTrips = localTrips.filter(t => t.id != id);
+    localStorage.setItem('st_saved', JSON.stringify(localTrips));
+
+    loadSavedTrips();
+    showToast('Trip removed');
+}
+
+function shareWhatsApp() {
+    if (!aiTripData || !aiTripData.dest) return;
+    var msg = `${aiTripData.source} to ${aiTripData.dest} - ${aiTripData.days} days - ₹${parseInt(aiTripData.budget).toLocaleString()} - Planned with SmartTour`;
+    window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+}
+function shareCopy() {
+    if (!aiTripData || !aiTripData.dest) return;
+    navigator.clipboard.writeText(`${aiTripData.source} to ${aiTripData.dest} | ${aiTripData.days} days | ₹${parseInt(aiTripData.budget).toLocaleString()}`);
+    showToast('Copied to clipboard!');
+}
+function shareEmail() {
+    if (!aiTripData || !aiTripData.dest) return;
+    window.open(`mailto:?subject=My Trip: ${aiTripData.source} to ${aiTripData.dest}&body=Trip from ${aiTripData.source} to ${aiTripData.dest}%0ADays: ${aiTripData.days}%0ABudget: ₹${parseInt(aiTripData.budget).toLocaleString()}`);
+}
+function printTripPlan() {
+    if (!aiTripData || !aiTripData.dest) { showToast('Plan a trip first!'); return; }
+    var win = window.open('', '_blank');
+    var itin = document.getElementById('section-itinerary') ? document.getElementById('section-itinerary').innerText : '';
+    var summ = document.getElementById('tripSummaryBody') ? document.getElementById('tripSummaryBody').innerText : '';
+    var content = `<html><head><meta charset="UTF-8"><title>SmartTour Itinerary</title><style>body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;color:#222;line-height:1.7}h1{color:#0097d6}h2{color:#00796b}.info{background:#f0f9ff;padding:14px;border-radius:8px;margin-bottom:18px}pre{white-space:pre-wrap;font-family:inherit}</style></head><body>`
+        + `<h1>SmartTour Trip Plan</h1>`
+        + `<div class="info"><b>From:</b> ${aiTripData.source} to ${aiTripData.dest}<br><b>Days:</b> ${aiTripData.days} | <b>Budget:</b> ₹${parseInt(aiTripData.budget).toLocaleString()}<br><b>Date:</b> ${new Date().toLocaleDateString()}</div>`
+        + `<h2>Trip Summary</h2><pre>${summ}</pre>`
+        + `<h2>Itinerary</h2><pre>${itin}</pre>`
+        + `</body></html>`;
+    win.document.write(content);
+    win.document.close();
+    win.print();
+}
+
+// INITIALIZATION
+window.addEventListener('DOMContentLoaded', async function() {
+    var savedTheme = localStorage.getItem('st_theme');
+    if (savedTheme === 'light') {
+        isDark = false;
+        document.body.classList.add('light');
+        document.getElementById('themeToggle').innerHTML = '&#9728;';
+    }
+    loadPackingList();
+
+    // Check backend connection and fetch destinations
+    await checkBackendHealth();
+    await loadDestinationsFromBackend();
+
+    // If user already logged in previously
+    if (authToken && currentUser) {
+        updateProfileUI();
+        showFabs();
+        showPage("dashboardPage");
+    } else {
+        updateProfileUI();
+        showPage("loginPage");
+    }
+});
+</script>
+</body>
+</html>
